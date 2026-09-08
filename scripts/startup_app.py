@@ -36,6 +36,7 @@
 #  DATA.
 # ##############################################################################
 
+from datetime import time
 import subprocess
 import os
 import cmlapi
@@ -56,6 +57,12 @@ env["API_URL"] = f"{metadata_base_url}"
 
 print("Starting application with metadata base URL: ", metadata_base_url)
 
+#while True:
+#    print(subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env))
+#    print("Application Restarting")
+
 while True:
-    print(subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env))
-    print("Application Restarting")
+    result = subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env)
+    print("Application exited with code:", result.returncode)
+    print("Waiting 5 seconds before restarting...")
+    time.sleep(5)
