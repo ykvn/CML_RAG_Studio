@@ -117,7 +117,7 @@ while ! curl --output /dev/null --silent --fail http://localhost:8081/amp; do
 done
 
 # start mlflow reconciler
-uv run reconciler/mlflow_reconciler.py &
+uv run --no-devreconciler/mlflow_reconciler.py &
 
 # start Node production server
 
