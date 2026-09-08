@@ -40,6 +40,7 @@ from datetime import time
 import subprocess
 import os
 import cmlapi
+from time import sleep
 
 client = cmlapi.default_client()
 applications = client.list_applications(project_id=os.environ['CDSW_PROJECT_ID'])
