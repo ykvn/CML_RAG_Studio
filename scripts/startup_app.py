@@ -66,4 +66,4 @@ while True:
     result = subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env)
     print("Application exited with code:", result.returncode)
     print("Waiting 5 seconds before restarting...")
-    time.sleep(5)
+    sleep(5)
