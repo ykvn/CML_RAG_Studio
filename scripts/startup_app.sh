@@ -103,7 +103,7 @@ if [ -e /app/.venv ]; then
   echo "Using existing virtual environment at /app/.venv"
   export UV_PROJECT_ENVIRONMENT=/app/.venv
 fi
-uv run fastapi run --host 127.0.0.1 --port 8081 2>&1 &
+uv run --no-dev fastapi run --host 127.0.0.1 --port 8081 2>&1 &
 
 PY_BACKGROUND_PID=$!
 # wait for the python backend to be ready
