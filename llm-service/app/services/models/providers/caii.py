@@ -113,7 +113,7 @@ class CAIIModelProvider(_ModelProvider):
         version: Optional[str] = get_cml_version_from_sense_bootstrap()
         if not version:
             return super().env_vars_are_set()
-        cml_version = Version(version)
+        cml_version = Version(version.split('-')[0])
         if cml_version >= Version("2.0.50-b68"):
             available_models = get_models_with_task("TEXT_GENERATION")
             if available_models:

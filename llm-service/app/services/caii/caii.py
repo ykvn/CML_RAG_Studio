@@ -115,7 +115,7 @@ def list_endpoints() -> list[ListEndpointEntry]:
 
     # Try Python API for CML version >= 2.0.50-b68
     if version:
-        if Version(version) >= Version("2.0.50-b68"):
+        if Version(version.split('-')[0]) >= Version("2.0.50-b68"):
             logger.info("Attempting Model discovery through Python API")
             python_api_results = list_endpoints_from_python_api()
             if python_api_results:
