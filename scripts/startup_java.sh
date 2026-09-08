@@ -56,9 +56,9 @@ if [ -z "$IS_COMPOSABLE" ]; then
 fi
 
 if [ -z "$DB_URL" ]; then
-  DB_URL_LOCATION="jdbc:h2:file:~/rag-studio/databases/rag;AUTO_SERVER=TRUE"
+  DB_URL_LOCATION="jdbc:h2:file:~/rag-studio/databases/rag"
   if [ -z "$IS_COMPOSABLE" ]; then
-    DB_URL_LOCATION="jdbc:h2:file:~/databases/rag;AUTO_SERVER=TRUE"
+    DB_URL_LOCATION="jdbc:h2:file:~/databases/rag"
   fi
   export DB_URL=$DB_URL_LOCATION
 fi

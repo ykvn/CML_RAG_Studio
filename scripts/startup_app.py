@@ -36,11 +36,9 @@
 #  DATA.
 # ##############################################################################
 
-from datetime import time
 import subprocess
 import os
 import cmlapi
-from time import sleep
 
 client = cmlapi.default_client()
 applications = client.list_applications(project_id=os.environ['CDSW_PROJECT_ID'])
@@ -58,12 +56,6 @@ env["API_URL"] = f"{metadata_base_url}"
 
 print("Starting application with metadata base URL: ", metadata_base_url)
 
-#while True:
-#    print(subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env))
-#    print("Application Restarting")
-
 while True:
-    result = subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env)
-    print("Application exited with code:", result.returncode)
-    print("Waiting 5 seconds before restarting...")
-    sleep(5)
+    print(subprocess.run(["bash scripts/startup_app.sh"], shell=True, env=env))
+    print("Application Restarting")
