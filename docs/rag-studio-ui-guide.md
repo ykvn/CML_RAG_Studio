@@ -255,6 +255,7 @@ Use **Settings → Studio Settings** to configure the application. Some fields a
 #### Vector Database
 
 - **Qdrant**: Embedded Qdrant (default).
+- **External Qdrant**: Use an externally hosted Qdrant server. Provide the Qdrant URL (e.g. `https://qdrant.example.com`) and an optional API key. RAG Studio does not launch the embedded Qdrant instance when this option is selected.
 - **Cloudera Semantic Search (OpenSearch)**: Set Endpoint, Namespace (alphanumeric), optional Username/Password. Supported up to OpenSearch 2.19.3.
 
 ![vectordb-css](images/settings-vectordb-css.png)

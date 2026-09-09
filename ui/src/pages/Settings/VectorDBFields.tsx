@@ -59,9 +59,9 @@ export const VectorDBFields = ({
         buttonStyle="solid"
         options={[
           { value: "QDRANT", label: "Embedded Qdrant" },
+          { value: "EXTERNAL_QDRANT", label: "External Qdrant" },
           { value: "OPENSEARCH", label: "Cloudera Semantic Search" },
           { value: "CHROMADB", label: "ChromaDB" },
-          { value: "EXTERNAL_QDRANT", label: "External Qdrant" },
         ]}
         disabled={!enableModification}
       />
