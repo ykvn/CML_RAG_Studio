@@ -59,6 +59,12 @@ class TestQdrantClient:
         client = _new_qdrant_client()
 
         assert isinstance(client, q_client.QdrantClient)
+        # HTTPS endpoint: must connect on port 443, not the library default 6333
+        assert client._client._port == 443
+        # The API key must be sent as the api-key header.
+        assert client._client._api_key == "secret-key"
+        # SSL certificate verification must be disabled for the REST client.
+        assert client._client._rest_args.get("verify") is False
 
     def test_external_provider_requires_url(
         self, monkeypatch: pytest.MonkeyPatch

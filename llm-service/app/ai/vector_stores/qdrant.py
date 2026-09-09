@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 
 def _new_qdrant_client() -> qdrant_client.QdrantClient:
-    # External Qdrant server: connect over HTTP(S) using a full URL.
+    # External Qdrant server: connect over HTTPS on port 443 using a full URL.
     if settings.qdrant_url:
         logger.info(
             "Using external Qdrant server at URL: %s",
@@ -64,9 +64,11 @@ def _new_qdrant_client() -> qdrant_client.QdrantClient:
         )
         return qdrant_client.QdrantClient(
             url=settings.qdrant_url,
+            port=443,  # HTTPS endpoint; the library otherwise defaults to 6333
             api_key=settings.qdrant_api_key or None,
             timeout=settings.qdrant_timeout,
             prefer_grpc=False,
+            verify=False,  # disable SSL certificate verification
         )
 
     if settings.vector_db_provider == "EXTERNAL_QDRANT":
