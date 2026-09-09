@@ -62,6 +62,13 @@ def _new_qdrant_client() -> qdrant_client.QdrantClient:
             "Using external Qdrant server at URL: %s",
             settings.qdrant_url,
         )
+        # The external Qdrant endpoint may be fronted by the CML SSO gateway,
+        # which returns a 302 → /login unless we pass the CML Bearer token.
+        # Add it as an Authorization header (like the standalone QdrantClient
+        # script does via build_cml_headers) in addition to the Qdrant api-key.
+        extra_headers: dict[str, str] = {}
+        if settings.cdsw_apiv2_key:
+            extra_headers["Authorization"] = f"Bearer {settings.cdsw_apiv2_key}"
         return qdrant_client.QdrantClient(
             url=settings.qdrant_url,
             port=443,  # HTTPS endpoint; the library otherwise defaults to 6333
@@ -69,6 +76,7 @@ def _new_qdrant_client() -> qdrant_client.QdrantClient:
             timeout=settings.qdrant_timeout,
             prefer_grpc=False,
             verify=False,  # disable SSL certificate verification
+            headers=extra_headers or None,
         )
 
     if settings.vector_db_provider == "EXTERNAL_QDRANT":

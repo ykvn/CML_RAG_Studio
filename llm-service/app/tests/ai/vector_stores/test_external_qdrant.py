@@ -55,6 +55,7 @@ class TestQdrantClient:
         monkeypatch.setenv("VECTOR_DB_PROVIDER", "EXTERNAL_QDRANT")
         monkeypatch.setenv("QDRANT_URL", "https://qdrant.example.com")
         monkeypatch.setenv("QDRANT_API_KEY", "secret-key")
+        monkeypatch.setenv("CDSW_APIV2_KEY", "cml-token")
 
         client = _new_qdrant_client()
 
@@ -65,6 +66,10 @@ class TestQdrantClient:
         assert client._client._api_key == "secret-key"
         # SSL certificate verification must be disabled for the REST client.
         assert client._client._rest_args.get("verify") is False
+        # CML SSO gateway: the Bearer token must be passed as Authorization.
+        assert client._client._rest_args.get("headers") == {
+            "Authorization": "Bearer cml-token"
+        }
 
     def test_external_provider_requires_url(
         self, monkeypatch: pytest.MonkeyPatch
