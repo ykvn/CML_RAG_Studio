@@ -36,6 +36,8 @@
 #  DATA.
 #
 
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from random import shuffle
 from typing import List, Optional
 
@@ -46,6 +48,8 @@ from app.services.metadata_apis import session_metadata_api
 from app.services.metadata_apis.session_metadata_api import Session
 from app.services.query import querier
 from app.services.query.query_configuration import QueryConfiguration
+
+logger = logging.getLogger(__name__)
 
 SAMPLE_QUESTIONS = [
     "What is Cloudera, and how does it support organizations in managing big data?",
@@ -89,6 +93,42 @@ def _generate_suggested_questions_direct_llm(session: Session) -> List[str]:
     return suggested_questions
 
 
+def _session_has_content(session: Session, max_workers: int = 4) -> bool:
+    """Return True if any of the session's data sources has indexed content.
+
+    The content probe issues a Qdrant round-trip per data source, so check
+    sources concurrently and stop as soon as one reports content.  This avoids a
+    long serial chain of HTTP calls purely to answer "is there anything?".
+    """
+    data_source_ids = list(session.get_all_data_source_ids())
+    if not data_source_ids:
+        return False
+
+    def _has_any_content(ds_id: int) -> bool:
+        try:
+            return (VectorStoreFactory.for_chunks(ds_id).size() or 0) > 0
+        except Exception as exc:  # A failing probe must not block suggestions.
+            logger.warning(
+                "Failed to probe data source %s for content while generating "
+                "suggested questions: %s",
+                ds_id,
+                exc,
+            )
+            return False
+
+    if len(data_source_ids) == 1:
+        return _has_any_content(data_source_ids[0])
+
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(data_source_ids))) as pool:
+        futures = {
+            pool.submit(_has_any_content, ds_id): ds_id for ds_id in data_source_ids
+        }
+        for future in as_completed(futures):
+            if future.result():
+                return True
+    return False
+
+
 def generate_suggested_questions(
     session_id: Optional[int],
     user_name: Optional[str] = None,
@@ -99,58 +139,49 @@ def generate_suggested_questions(
     if len(session.get_all_data_source_ids()) == 0:
         return _generate_suggested_questions_direct_llm(session)
 
-    total_data_sources_size: int = sum(
-        map(
-            lambda ds_id: VectorStoreFactory.for_chunks(ds_id).size() or 0,
-            session.get_all_data_source_ids(),
-        )
-    )
-    if total_data_sources_size == 0:
+    if not _session_has_content(session):
         return _generate_suggested_questions_direct_llm(session)
         # raise HTTPException(status_code=404, detail="Knowledge base not found.")
 
     chat_history = retrieve_chat_history(session_id)
-    if total_data_sources_size == 0:
-        suggested_questions = []
-    else:
+    query_str = (
+        "Give me a list of questions that you can answer."
+        " Each question should be on a new line."
+        " There should be no more than four (4) questions."
+        " Each question should be no longer than fifteen (15) words."
+        " The response should be a bulleted list, using an asterisk (*) to denote the bullet item."
+        " Only return plain text."
+        " Do not return any HTML tags or markdown formatting."
+        " Do not return questions based on the metadata of the document. Only the content."
+        " Do not start like this - `Here are four questions that I can answer based on the context information`"
+        " Only return the list."
+    )
+    if chat_history:
         query_str = (
-            "Give me a list of questions that you can answer."
-            " Each question should be on a new line."
-            " There should be no more than four (4) questions."
-            " Each question should be no longer than fifteen (15) words."
-            " The response should be a bulleted list, using an asterisk (*) to denote the bullet item."
-            " Only return plain text."
-            " Do not return any HTML tags or markdown formatting."
-            " Do not return questions based on the metadata of the document. Only the content."
-            " Do not start like this - `Here are four questions that I can answer based on the context information`"
-            " Only return the list."
-        )
-        if chat_history:
-            query_str = (
-                query_str
-                + (
-                    "I will provide a response from my last question to help with generating new questions."
-                    " Consider returning questions that are relevant to the response"
-                    " They might be follow up questions or questions that are related to the response."
-                    " Here is the last response received:\n"
-                )
-                + chat_history[-1].content
+            query_str
+            + (
+                "I will provide a response from my last question to help with generating new questions."
+                " Consider returning questions that are relevant to the response"
+                " They might be follow up questions or questions that are related to the response."
+                " Here is the last response received:\n"
             )
-        response, _ = querier.query(
-            session,
-            query_str,
-            QueryConfiguration(
-                top_k=session.response_chunks,
-                model_name=session.inference_model,
-                rerank_model_name=None,
-                exclude_knowledge_base=False,
-                use_question_condensing=False,
-                use_hyde=False,
-                use_postprocessor=False,
-                use_tool_calling=False,
-            ),
-            [],
-            should_condense_question=False,
+            + chat_history[-1].content
         )
-        suggested_questions = process_response(response.response)
+    response, _ = querier.query(
+        session,
+        query_str,
+        QueryConfiguration(
+            top_k=session.response_chunks,
+            model_name=session.inference_model,
+            rerank_model_name=None,
+            exclude_knowledge_base=False,
+            use_question_condensing=False,
+            use_hyde=False,
+            use_postprocessor=False,
+            use_tool_calling=False,
+        ),
+        [],
+        should_condense_question=False,
+    )
+    suggested_questions = process_response(response.response)
     return suggested_questions
