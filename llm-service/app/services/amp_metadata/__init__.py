@@ -115,6 +115,15 @@ class OpenSearchConfig(BaseModel):
     opensearch_namespace: Optional[str] = None
 
 
+class QdrantConfig(BaseModel):
+    """
+    Model to represent the external Qdrant configuration.
+    """
+
+    qdrant_url: Optional[str] = None
+    qdrant_api_key: Optional[str] = None
+
+
 class ChromaDbConfig(BaseModel):
     """
     Model to represent the ChromaDB configuration.
@@ -174,6 +183,7 @@ class ProjectConfig(BaseModel):
     openai_config: OpenAiConfig
     opensearch_config: OpenSearchConfig
     chromadb_config: ChromaDbConfig
+    qdrant_config: QdrantConfig
     metadata_db_config: MetadataDbConfig
     cdp_token: Optional[str] = None
 
@@ -378,6 +388,8 @@ def config_to_env(config: ProjectConfig) -> dict[str, str]:
             "CHROMADB_TOKEN": config.chromadb_config.chromadb_token or "",
             "CHROMADB_TENANT": config.chromadb_config.chromadb_tenant or "",
             "CHROMADB_DATABASE": config.chromadb_config.chromadb_database or "",
+            "QDRANT_URL": config.qdrant_config.qdrant_url or "",
+            "QDRANT_API_KEY": config.qdrant_config.qdrant_api_key or "",
             "OPENAI_API_KEY": config.openai_config.openai_api_key or "",
             "OPENAI_API_BASE": config.openai_config.openai_api_base or "",
             "DB_TYPE": config.metadata_db_provider or "H2",
@@ -447,6 +459,10 @@ def build_configuration(
         chromadb_tenant=env.get("CHROMADB_TENANT"),
         chromadb_database=env.get("CHROMADB_DATABASE"),
     )
+    qdrant_config = QdrantConfig(
+        qdrant_url=env.get("QDRANT_URL"),
+        qdrant_api_key=env.get("QDRANT_API_KEY"),
+    )
     validate_config = validate(frozenset(env.items()))
 
     model_provider = (
@@ -476,6 +492,7 @@ def build_configuration(
         caii_config=caii_config,
         opensearch_config=opensearch_config,
         chromadb_config=chromadb_config,
+        qdrant_config=qdrant_config,
         is_valid_config=validate_config.valid,
         config_validation_results=validate_config,
         release_version=os.environ.get("RELEASE_TAG", "unknown"),

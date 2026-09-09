@@ -200,7 +200,7 @@ const RestartAppModal = ({
           };
         }
 
-        // clear open search and chromadb configs if QDRANT is selected
+        // clear open search, chromadb, and external qdrant configs if embedded QDRANT is selected
         if (values.vector_db_provider === "QDRANT") {
           values.opensearch_config = {
             opensearch_username: undefined,
@@ -215,9 +215,13 @@ const RestartAppModal = ({
             chromadb_tenant: undefined,
             chromadb_database: undefined,
           };
+          values.qdrant_config = {
+            qdrant_url: undefined,
+            qdrant_api_key: undefined,
+          };
         }
 
-        // clear chromadb config if opensearch is selected
+        // clear chromadb and external qdrant configs if opensearch is selected
         if (values.vector_db_provider === "OPENSEARCH") {
           values.chromadb_config = {
             chromadb_host: undefined,
@@ -226,15 +230,40 @@ const RestartAppModal = ({
             chromadb_tenant: undefined,
             chromadb_database: undefined,
           };
+          values.qdrant_config = {
+            qdrant_url: undefined,
+            qdrant_api_key: undefined,
+          };
         }
 
-        // clear opensearch config if chromadb is selected
+        // clear opensearch and external qdrant configs if chromadb is selected
         if (values.vector_db_provider === "CHROMADB") {
           values.opensearch_config = {
             opensearch_username: undefined,
             opensearch_password: undefined,
             opensearch_endpoint: undefined,
             opensearch_namespace: undefined,
+          };
+          values.qdrant_config = {
+            qdrant_url: undefined,
+            qdrant_api_key: undefined,
+          };
+        }
+
+        // clear opensearch and chromadb configs if external qdrant is selected
+        if (values.vector_db_provider === "EXTERNAL_QDRANT") {
+          values.opensearch_config = {
+            opensearch_username: undefined,
+            opensearch_password: undefined,
+            opensearch_endpoint: undefined,
+            opensearch_namespace: undefined,
+          };
+          values.chromadb_config = {
+            chromadb_host: undefined,
+            chromadb_port: undefined,
+            chromadb_token: undefined,
+            chromadb_tenant: undefined,
+            chromadb_database: undefined,
           };
         }
 

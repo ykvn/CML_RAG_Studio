@@ -56,6 +56,25 @@ logger = logging.getLogger(__name__)
 
 
 def _new_qdrant_client() -> qdrant_client.QdrantClient:
+    # External Qdrant server: connect over HTTP(S) using a full URL.
+    if settings.qdrant_url:
+        logger.info(
+            "Using external Qdrant server at URL: %s",
+            settings.qdrant_url,
+        )
+        return qdrant_client.QdrantClient(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key or None,
+            timeout=settings.qdrant_timeout,
+            prefer_grpc=False,
+        )
+
+    if settings.vector_db_provider == "EXTERNAL_QDRANT":
+        raise ValueError(
+            "VECTOR_DB_PROVIDER is EXTERNAL_QDRANT but no QDRANT_URL is set. "
+            "Please configure the QDRANT_URL of your external Qdrant server."
+        )
+
     auth_token: str | None = settings.cdsw_apiv2_key
 
     def auth_token_provider() -> str:

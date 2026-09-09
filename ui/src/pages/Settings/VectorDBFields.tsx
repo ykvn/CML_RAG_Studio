@@ -61,6 +61,7 @@ export const VectorDBFields = ({
           { value: "QDRANT", label: "Embedded Qdrant" },
           { value: "OPENSEARCH", label: "Cloudera Semantic Search" },
           { value: "CHROMADB", label: "ChromaDB" },
+          { value: "EXTERNAL_QDRANT", label: "External Qdrant" },
         ]}
         disabled={!enableModification}
       />
@@ -68,6 +69,13 @@ export const VectorDBFields = ({
     {selectedVectorDBProvider === "QDRANT" && (
       <StyledHelperText>
         Embedded Qdrant will be used as the vector database.
+      </StyledHelperText>
+    )}
+    {selectedVectorDBProvider === "EXTERNAL_QDRANT" && (
+      <StyledHelperText>
+        An externally hosted Qdrant server will be used as the vector database.
+        Provide the full URL (e.g. https://qdrant.example.com). No database name
+        is required — Qdrant collections are created automatically.
       </StyledHelperText>
     )}
     {selectedVectorDBProvider === "OPENSEARCH" ? (
@@ -209,6 +217,40 @@ export const VectorDBFields = ({
       hidden={selectedVectorDBProvider !== "CHROMADB"}
     >
       <Input placeholder="default_database" />
+    </Form.Item>
+    <Form.Item
+      label={"Qdrant URL"}
+      initialValue={projectConfig?.qdrant_config.qdrant_url}
+      name={["qdrant_config", "qdrant_url"]}
+      tooltip="Full URL of the external Qdrant server, e.g. https://qdrant.example.com"
+      required={selectedVectorDBProvider === "EXTERNAL_QDRANT"}
+      rules={[
+        {
+          required: selectedVectorDBProvider === "EXTERNAL_QDRANT",
+          message: "Qdrant URL is required when using an external Qdrant server",
+        },
+        // validate url
+        {
+          pattern: /^https?:\/\/.+/i,
+          message: "Invalid URL. Must start with http:// or https://",
+          warningOnly: false,
+        },
+      ]}
+      hidden={selectedVectorDBProvider !== "EXTERNAL_QDRANT"}
+    >
+      <Input
+        placeholder="https://qdrant.example.com"
+        disabled={!enableModification}
+      />
+    </Form.Item>
+    <Form.Item
+      label={"Qdrant API Key"}
+      initialValue={projectConfig?.qdrant_config.qdrant_api_key}
+      name={["qdrant_config", "qdrant_api_key"]}
+      tooltip="Optional API key, required if your Qdrant server uses authentication."
+      hidden={selectedVectorDBProvider !== "EXTERNAL_QDRANT"}
+    >
+      <Input placeholder="api-key" />
     </Form.Item>
   </Flex>
 );

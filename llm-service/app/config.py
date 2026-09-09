@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 SummaryStorageProviderType = Literal["Local", "S3"]
 ChatStoreProviderType = Literal["Local", "S3"]
-VectorDbProviderType = Literal["QDRANT", "OPENSEARCH", "CHROMADB"]
+VectorDbProviderType = Literal["QDRANT", "OPENSEARCH", "CHROMADB", "EXTERNAL_QDRANT"]
 MetadataDbProviderType = Literal["H2", "PostgreSQL"]
 
 
@@ -122,6 +122,20 @@ class _Settings:
     @property
     def qdrant_grpc_port(self) -> int:
         return int(os.environ.get("QDRANT_GRPC_PORT", "6334"))
+
+    @property
+    def qdrant_url(self) -> str:
+        """Full URL of an external Qdrant server (e.g. https://qdrant.example.com).
+
+        When set, RAG Studio connects to this external Qdrant over HTTP(S)
+        instead of launching/using an embedded Qdrant instance.
+        """
+        return os.environ.get("QDRANT_URL", "")
+
+    @property
+    def qdrant_api_key(self) -> str:
+        """Optional API key for the external Qdrant server."""
+        return os.environ.get("QDRANT_API_KEY", "")
 
     @property
     def advanced_pdf_parsing(self) -> bool:

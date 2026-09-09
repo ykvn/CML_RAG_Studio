@@ -94,13 +94,29 @@ S3 will also require providing the AWS credentials for the bucket.
 
 ### Vector Database Options
 
-RAG Studio supports Qdrant (default), OpenSearch (Cloudera Semantic Search), and ChromaDB.
+RAG Studio supports Qdrant (default), OpenSearch (Cloudera Semantic Search), ChromaDB, and External Qdrant.
 
-- To choose the vector DB, set `VECTOR_DB_PROVIDER` to one of `QDRANT`, `OPENSEARCH`, or `CHROMADB` in your `.env`.
+- To choose the vector DB, set `VECTOR_DB_PROVIDER` to one of `QDRANT`, `OPENSEARCH`, `CHROMADB`, or `EXTERNAL_QDRANT` in your `.env`.
 
 #### Qdrant (Default)
 
 No configuration needed. RAG Studio uses an embedded Qdrant instance by default.
+
+#### External Qdrant
+
+To use an externally hosted Qdrant server (e.g. a dedicated or shared Qdrant deployment), set `VECTOR_DB_PROVIDER=EXTERNAL_QDRANT` in `.env`:
+
+- `QDRANT_URL` - The full URL of the external Qdrant server (e.g. `https://qdrant.example.com`). Required.
+- `QDRANT_API_KEY` - Optional. Required if your Qdrant server uses API key authentication.
+
+> **No database name is required.** Unlike ChromaDB, Qdrant has no tenants/databases. It organizes data into
+> **collections**, and RAG Studio automatically creates and namespaces them per data source
+> (`index_{id}` for chunks and `summary_index_{id}` for summaries). Collections are created on demand, so nothing
+> needs to be pre-created on the server.
+
+When `EXTERNAL_QDRANT` is selected, RAG Studio connects to your Qdrant server over HTTP(S) and does **not** launch
+the embedded Qdrant instance. Use the same Service/application Settings UI or the environment variables above to point
+at your endpoint.
 
 #### OpenSearch (Cloudera Semantic Search)
 

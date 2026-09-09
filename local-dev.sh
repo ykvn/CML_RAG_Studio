@@ -87,8 +87,14 @@ mkdir -p databases
 
 # Check the VECTOR_DB_PROVIDER environment variable
 if [ "${VECTOR_DB_PROVIDER:-QDRANT}" = "QDRANT" ]; then
-  echo "Using Qdrant as the vector database provider..."
+  echo "Using embedded Qdrant as the vector database provider..."
   docker run --name qdrant_dev --rm -d -p 6333:6333 -p 6334:6334 -v $(pwd)/databases/qdrant_storage:/qdrant/storage:z qdrant/qdrant
+elif [ "${VECTOR_DB_PROVIDER:-QDRANT}" = "EXTERNAL_QDRANT" ]; then
+  echo "Using external Qdrant as the vector database provider. Skipping embedded Qdrant startup..."
+  if [ -z "${QDRANT_URL:-}" ]; then
+    echo "ERROR: VECTOR_DB_PROVIDER is EXTERNAL_QDRANT but QDRANT_URL is not set."
+    exit 1
+  fi
 elif [ "${VECTOR_DB_PROVIDER:-QDRANT}" = "OPENSEARCH" ]; then
   echo "Using OpenSearch as the vector database provider..."
   docker compose -f opensearch/docker-compose.yaml up --detach
@@ -98,7 +104,7 @@ elif [ "${VECTOR_DB_PROVIDER:-QDRANT}" = "CHROMADB" ]; then
     docker run --name chromadb_dev --rm -d -p 8000:8000 -v $(pwd)/databases/chromadb_storage:/data chromadb/chroma
   fi
 else
-  echo "Unsupported VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER}. Supported values are QDRANT or OPENSEARCH."
+  echo "Unsupported VECTOR_DB_PROVIDER: ${VECTOR_DB_PROVIDER}. Supported values are QDRANT, EXTERNAL_QDRANT, OPENSEARCH, or CHROMADB."
   exit 1
 fi
 

@@ -73,7 +73,13 @@ fi
 
 # start the vector DB
 if [ "${VECTOR_DB_PROVIDER}" = "QDRANT" ]; then
-  qdrant/qdrant 2>&1 &  
+  qdrant/qdrant 2>&1 &
+elif [ "${VECTOR_DB_PROVIDER}" = "EXTERNAL_QDRANT" ]; then
+  if [ -z "${QDRANT_URL}" ]; then
+    echo "ERROR: VECTOR_DB_PROVIDER is EXTERNAL_QDRANT but QDRANT_URL is not set."
+    exit 1
+  fi
+  echo "Using external Qdrant at ${QDRANT_URL}. Skipping embedded Qdrant startup."
 fi
 
 if [ "${VECTOR_DB_PROVIDER}" = "CHROMADB" ]; then
