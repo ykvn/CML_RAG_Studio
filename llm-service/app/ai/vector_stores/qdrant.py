@@ -36,6 +36,8 @@
 #  DATA.
 #
 import logging
+import threading
+import time
 from typing import Optional, cast
 
 import qdrant_client
@@ -53,6 +55,37 @@ from ...services import models
 from ...services.metadata_apis import data_sources_metadata_api
 
 logger = logging.getLogger(__name__)
+
+# Collection existence is checked repeatedly and redundantly during the query
+# path (build_retriever -> size() -> exists(), FlexibleRetriever summary filter,
+# SuggestQuestions retriever, etc.), and every call is a Qdrant HTTPS round-trip.
+# Because each VectorStoreFactory call constructs a fresh store instance, cache
+# existence by collection name at module level with a short TTL. It is
+# invalidated explicitly on delete to avoid serving a stale result.
+_COLLECTION_EXISTS_TTL_SECONDS = 30.0
+_collection_exists_cache: dict[str, tuple[float, bool]] = {}
+_collection_exists_lock = threading.Lock()
+
+
+def _cached_collection_exists(client: qdrant_client.QdrantClient, table_name: str) -> bool:
+    now = time.monotonic()
+    with _collection_exists_lock:
+        cached = _collection_exists_cache.get(table_name)
+        if cached is not None and (now - cached[0]) < _COLLECTION_EXISTS_TTL_SECONDS:
+            return cached[1]
+    try:
+        result = bool(client.collection_exists(table_name))
+    except Exception:
+        # Don't cache failures; a transient network error shouldn't stick around.
+        return False
+    with _collection_exists_lock:
+        _collection_exists_cache[table_name] = (time.monotonic(), result)
+    return result
+
+
+def _invalidate_collection_exists(table_name: str) -> None:
+    with _collection_exists_lock:
+        _collection_exists_cache.pop(table_name, None)
 
 
 def _new_qdrant_client() -> qdrant_client.QdrantClient:
@@ -154,6 +187,7 @@ class QdrantVectorStore(VectorStore):
     def delete(self) -> None:
         if self.exists():
             self.client.delete_collection(self.table_name)
+            _invalidate_collection_exists(self.table_name)
 
     def delete_document(self, document_id: str) -> None:
         if self.exists():
@@ -164,7 +198,7 @@ class QdrantVectorStore(VectorStore):
             index.delete_ref_doc(document_id)
 
     def exists(self) -> bool:
-        return self.client.collection_exists(self.table_name)
+        return _cached_collection_exists(self.client, self.table_name)
 
     def llama_vector_store(self) -> BasePydanticVectorStore:
         vector_store = LlamaIndexQdrantVectorStore(

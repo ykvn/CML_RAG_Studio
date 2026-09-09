@@ -35,6 +35,8 @@
 #  BUSINESS ADVANTAGE OR UNAVAILABILITY, OR LOSS OR CORRUPTION OF
 #  DATA.
 #
+import concurrent.futures
+import logging
 from typing import List
 
 from llama_index.core import QueryBundle
@@ -43,6 +45,8 @@ from llama_index.core.schema import NodeWithScore
 
 from app.services.query.flexible_retriever import FlexibleRetriever
 
+logger = logging.getLogger(__name__)
+
 
 class MultiSourceRetriever(BaseRetriever):
     def __init__(self, retrievers: list[FlexibleRetriever]):
@@ -50,9 +54,26 @@ class MultiSourceRetriever(BaseRetriever):
         self.retrievers = retrievers
 
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
+        # Each source's retrieval is dominated by network round-trips (an LLM
+        # query-embedding call plus one or more Qdrant searches), and the
+        # per-source stores are independent (separate collections/clients).
+        # Run them concurrently to cut total retrieval time roughly in half.
+        if not self.retrievers:
+            return []
         results: list[NodeWithScore] = []
-        for retriever in self.retrievers:
-            results.extend(retriever.retrieve(query_bundle))
+        # Bounded, small pool to avoid saturating the gateway/vector store.
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(len(self.retrievers), 4)
+        ) as executor:
+            futures = [
+                executor.submit(retriever.retrieve, query_bundle)
+                for retriever in self.retrievers
+            ]
+            for future in futures:
+                try:
+                    results.extend(future.result())
+                except Exception:
+                    logger.exception("Failed to retrieve from one data source")
         return results
 
 
