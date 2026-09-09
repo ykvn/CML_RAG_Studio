@@ -103,19 +103,19 @@ def does_amp_need_updating() -> bool:
     """Check if the AMP is up-to-date. Returns True if the AMP needs updating."""
 
     # Retrieve the current branch only once
-    current_branch = (
-        subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-        .strip()
-        .decode("utf-8")
-    )
+    #current_branch = (
+    #    subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    #    .strip()
+    #    .decode("utf-8")
+    #)
 
     # Retrieve the current and latest git hashes
-    current_hash = get_current_git_hash()
-    latest_hash = get_latest_git_hash(current_branch)
-    if current_hash and latest_hash:
-        if current_hash != latest_hash:
-            _, behind = check_if_ahead_or_behind(current_hash, current_branch)
-            if behind > 0:
-                return True
+    #current_hash = get_current_git_hash()
+    #latest_hash = get_latest_git_hash(current_branch)
+    #if current_hash and latest_hash:
+    #    if current_hash != latest_hash:
+    #        _, behind = check_if_ahead_or_behind(current_hash, current_branch)
+    #        if behind > 0:
+    #            return True
 
     return False
