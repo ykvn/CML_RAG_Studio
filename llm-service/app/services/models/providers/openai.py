@@ -96,10 +96,18 @@ class OpenAiModelProvider(_ModelProvider):
 
     @staticmethod
     def _http_client() -> Optional[httpx.Client]:
+        # Enhanced HTTP client with explicit timeout limits to prevent connection drops
+        timeout = httpx.Timeout(120.0, connect=10.0)
+        limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+        
         if os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
-            return httpx.Client(verify="/etc/ssl/certs/ca-certificates.crt")
+            return httpx.Client(
+                verify="/etc/ssl/certs/ca-certificates.crt",
+                timeout=timeout,
+                limits=limits,
+            )
         else:
-            return None
+            return httpx.Client(timeout=timeout, limits=limits)
 
     @staticmethod
     def get_llm_model(name: str) -> OpenAI:
@@ -110,6 +118,8 @@ class OpenAiModelProvider(_ModelProvider):
             max_tokens=2048,
             api_base=settings.openai_api_base,
             api_key=settings.openai_api_key,
+            timeout=settings.llm_request_timeout,
+            max_retries=settings.llm_max_retries,
             http_client=OpenAiModelProvider._http_client(),
         )
 
@@ -119,6 +129,9 @@ class OpenAiModelProvider(_ModelProvider):
             model_name=name,
             api_key=settings.openai_api_key,
             api_base=settings.openai_api_base,
+            timeout=settings.llm_request_timeout,
+            max_retries=settings.llm_max_retries,
+            embed_batch_size=settings.embedding_batch_size,
             http_client=OpenAiModelProvider._http_client(),
         )
 

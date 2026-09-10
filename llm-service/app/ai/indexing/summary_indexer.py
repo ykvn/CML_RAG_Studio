@@ -139,7 +139,6 @@ class SummaryIndexer(BaseTextIndexer):
         prompt_helper: Optional[PromptHelper] = None
         model_source: ModelSource = get_provider_class().get_model_source()
         if model_source == "CAII":
-            # if we're using CAII, let's be conservative and use a small context window to account for mistral's small context
             prompt_helper = PromptHelper(context_window=3000)
         else:
             prompt_helper = PromptHelper(
@@ -150,7 +149,7 @@ class SummaryIndexer(BaseTextIndexer):
             "response_synthesizer": get_response_synthesizer(
                 response_mode=ResponseMode.TREE_SUMMARIZE,
                 llm=llm,
-                use_async=True,
+                use_async=False,  # Set to False to serialize summarization calls and prevent rate spikes
                 verbose=True,
                 prompt_helper=prompt_helper,
             ),

@@ -53,6 +53,7 @@ from .readers.excel import ExcelReader
 from .readers.csv import CSVReader
 from ...ai.vector_stores.qdrant import QdrantVectorStore
 from ...ai.vector_stores.vector_store import VectorStore
+from ...config import settings
 from ...services.utils import batch_sequence, flatten_sequence
 
 logger = logging.getLogger(__name__)
@@ -115,12 +116,8 @@ class EmbeddingIndexer(BaseTextIndexer):
             acc += len(chunk_batch)
             logger.debug(f"Adding {acc}/{len(nodes)} chunks to vector store")
 
-            # We have to explicitly convert here even though the types are compatible (TextNode inherits from BaseNode)
-            # because the "add" annotation uses List instead of Sequence. We need to use TextNode explicitly because
-            # we're capturing "text".
             converted_chunks: List[BaseNode] = [chunk for chunk in chunk_batch]
 
-            # flatten metadata if vector store has self.flat_metadata
             if self.chunks_vector_store.flat_metadata:
                 converted_chunks = [
                     self._flatten_metadata(chunk) for chunk in converted_chunks
@@ -134,10 +131,12 @@ class EmbeddingIndexer(BaseTextIndexer):
     def _compute_embeddings(
         self, chunks: List[TextNode]
     ) -> Generator[List[TextNode], None, None]:
-        batched_chunks = list(batch_sequence(chunks, 100))
+        batch_size = settings.embedding_batch_size
+        batched_chunks = list(batch_sequence(chunks, batch_size))
         batched_texts = [[chunk.text for chunk in batch] for batch in batched_chunks]
 
-        max_workers = 15
+        # Throttle max workers to prevent hitting gateway rate limits
+        max_workers = settings.embedding_max_workers
         logger.debug("Using %s workers for embedding generation", max_workers)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:

@@ -276,5 +276,25 @@ class _Settings:
             )
             return None
 
+    @property
+    def embedding_max_workers(self) -> int:
+        """Max concurrent worker threads for computing embeddings."""
+        return int(os.environ.get("EMBEDDING_MAX_WORKERS", "3"))
+
+    @property
+    def embedding_batch_size(self) -> int:
+        """Batch size for text chunk embeddings."""
+        return int(os.environ.get("EMBEDDING_BATCH_SIZE", "20"))
+
+    @property
+    def llm_request_timeout(self) -> float:
+        """Timeout in seconds for LLM & Embedding HTTP calls."""
+        return float(os.environ.get("LLM_REQUEST_TIMEOUT", "120.0"))
+
+    @property
+    def llm_max_retries(self) -> int:
+        """Maximum retry attempts for LLM requests before raising an exception."""
+        return int(os.environ.get("LLM_MAX_RETRIES", "3"))
+
 
 settings = _Settings()
