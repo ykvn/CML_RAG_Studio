@@ -41,7 +41,7 @@ from typing import Optional
 import httpx
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike  # Swapped to OpenAILike
 
 from ._model_provider import _ModelProvider
 from ...caii.types import ModelResponse
@@ -111,7 +111,6 @@ class OpenAiModelProvider(_ModelProvider):
 
     @staticmethod
     def _http_client() -> Optional[httpx.Client]:
-        # Enhanced HTTP client with explicit timeout limits to prevent connection drops
         timeout = httpx.Timeout(120.0, connect=10.0)
         limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
         
@@ -125,12 +124,14 @@ class OpenAiModelProvider(_ModelProvider):
             return httpx.Client(timeout=timeout, limits=limits)
 
     @staticmethod
-    def get_llm_model(name: str) -> OpenAI:
-        return OpenAI(
+    def get_llm_model(name: str) -> OpenAILike:
+        return OpenAILike(
             model=name,
             messages_to_prompt=messages_to_prompt,
             completion_to_prompt=completion_to_prompt,
             max_tokens=2048,
+            is_chat_model=True,
+            is_function_calling_model=True,
             api_base=settings.openai_api_base,
             api_key=settings.openai_api_key,
             timeout=settings.llm_request_timeout,
