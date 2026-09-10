@@ -40,8 +40,8 @@ from typing import Optional
 
 import httpx
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
-from llama_index.embeddings.openai_like import OpenAIEmbedding
-from llama_index.llms.openai_like import OpenAILike  # Swapped to OpenAILike
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai_like import OpenAILike
 
 from ._model_provider import _ModelProvider
 from ...caii.types import ModelResponse
