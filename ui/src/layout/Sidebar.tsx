@@ -49,10 +49,14 @@ import {
   Layout,
   Menu,
   MenuProps,
+  Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 import Images from "src/components/images/Images.ts";
+import LightbulbIcon from "src/cuix/icons/LightbulbIcon";
+import { cdlAmber200, cdlAmber900 } from "src/cuix/variables.ts";
 import "./style.css";
 import AmpUpdateBanner from "src/components/AmpUpdate/AmpUpdateBanner.tsx";
 import { useGetPollingAmpConfig } from "src/api/ampMetadataApi.ts";
@@ -72,10 +76,12 @@ const Sidebar: React.FC = () => {
 
   const navToRagApp = () => {
     navigate({ to: "/chats" }).catch(() => null);
+    return;
   };
 
   const navToData = () => {
     navigate({ to: "/data" }).catch(() => null);
+    return;
   };
 
   const navToAnalytics = () => {
@@ -90,6 +96,55 @@ const Sidebar: React.FC = () => {
   const enableFullUsage = Boolean(!config?.is_valid_config);
 
   const baseItems: MenuItem[] = [
+    {
+      label: collapsed ? (
+        <Tooltip title="Technical Preview">
+          <Tag
+            color={cdlAmber200}
+            style={{
+              borderRadius: 4,
+              height: 24,
+              width: 30,
+              marginLeft: 18,
+            }}
+          >
+            <Flex
+              gap={4}
+              justify="center"
+              align="center"
+              style={{ height: "100%" }}
+            >
+              <LightbulbIcon color="#000" />
+            </Flex>
+          </Tag>
+        </Tooltip>
+      ) : (
+        <Tag
+          color={cdlAmber200}
+          style={{
+            borderRadius: 20,
+            height: 24,
+            paddingLeft: 6,
+            paddingRight: 8,
+            marginLeft: 10,
+          }}
+        >
+          <Flex
+            gap={4}
+            justify="center"
+            align="center"
+            style={{ height: "100%" }}
+          >
+            <LightbulbIcon color="#000" />
+            <Typography.Text style={{ fontSize: 12 }} color={cdlAmber900}>
+              Technical Preview
+            </Typography.Text>
+          </Flex>
+        </Tag>
+      ),
+      key: "tech-preview",
+      type: "group",
+    },
     getItem({
       label: <div data-testid="rag-apps-nav">Chats</div>,
       key: "chat",
@@ -164,36 +219,21 @@ const Sidebar: React.FC = () => {
       width={250}
       ref={ref}
     >
-      {/* Centered Brand Header */}
-      <Flex
-        vertical
-        align="center"
-        justify="center"
-        style={{ padding: "20px 16px", width: "100%" }}
-      >
+      <div style={{ padding: 20 }}>
         <Image
-          src={Images.BniIcon}
+          src={Images.ClouderaSmall}
           preview={false}
-          height={32}
-          style={{ objectFit: "contain" }}
+          height={36}
+          style={{ paddingLeft: 4 }}
         />
-        {!collapsed && (
-          <Typography.Text
-            style={{
-              color: "rgba(255, 255, 255, 0.85)",
-              fontWeight: 600,
-              fontSize: 13,
-              lineHeight: 1.2,
-              whiteSpace: "nowrap",
-              marginTop: 6,
-              textAlign: "center",
-            }}
-          >
-            Document Intelligence
-          </Typography.Text>
-        )}
-      </Flex>
-
+        {!collapsed ? (
+          <Image
+            src={Images.RagStudioProduct}
+            preview={false}
+            style={{ transition: "ease-in", paddingLeft: 5 }}
+          />
+        ) : null}
+      </div>
       <Flex vertical justify="space-between" style={{ height: "85%" }}>
         <Menu selectedKeys={chooseRoute()} mode="inline" items={items} />
         <AmpUpdateBanner isCollapsed={collapsed} />
