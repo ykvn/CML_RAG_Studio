@@ -53,12 +53,12 @@ import PlusCircle from "./ic-plus-circle.svg?react";
 import RagStudioProduct from "./rag-studio-product-icon.svg";
 import image404 from "./404image.png";
 import Models from "./ic-models.svg?react";
-import Bni from "./bni.png";
+import BniIcon from "./bni.png";
 
 const Images = {
   AiAssistant: AiAssistant,
   AiAssistantWhite: AiAssistantWhite,
-  Bni: Bni,
+  BniIcon: BniIcon,
   BrandTalking: BrandTalking,
   Chat: Chat,
   Cloudera: Cloudera,
