@@ -40,7 +40,7 @@ from typing import Optional
 
 import httpx
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
-from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.embeddings.openai_like import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike  # Swapped to OpenAILike
 
 from ._model_provider import _ModelProvider
@@ -96,12 +96,8 @@ class OpenAiModelProvider(_ModelProvider):
     def list_embedding_models() -> list[ModelResponse]:
         return [
             ModelResponse(
-                model_id="text-embedding-ada-002",
-                name="Text Embedding Ada 002",
-            ),
-            ModelResponse(
-                model_id="text-embedding-3-large",
-                name="Text Embedding 3 Large",
+                model_id="bge-m3",
+                name="bge-m3",
             ),
         ]
 
