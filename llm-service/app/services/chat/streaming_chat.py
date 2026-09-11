@@ -109,6 +109,7 @@ def _get_reasoning_delta(response: ChatResponse) -> str:
     # 3. Return the first non-empty string candidate (preserving whitespace and newlines)
     for candidate in candidates:
         if isinstance(candidate, str) and len(candidate) > 0:
+            logger.info("Found reasoning token candidate: %r", candidate)
             return candidate
 
     return ""
@@ -179,7 +180,13 @@ def _run_streaming_chat(
             reasoning_content = _get_reasoning_delta(response)
             if reasoning_content:
                 response.additional_kwargs["reasoning_content"] = reasoning_content
-                logger.debug("Streamed reasoning token: %r", reasoning_content)
+                logger.info("[STREAM_CHAT] Streaming reasoning token: %r", reasoning_content)
+            else:
+                logger.debug(
+                    "[STREAM_CHAT] Standard token: %r | raw: %r",
+                    response.delta,
+                    getattr(response, "raw", None),
+                )
 
             yield response
 
@@ -259,6 +266,7 @@ def _stream_direct_llm_chat(
             reasoning_content = _get_reasoning_delta(response)
             if reasoning_content:
                 response.additional_kwargs["reasoning_content"] = reasoning_content
+                logger.info("[DIRECT_LLM] Streaming reasoning token: %r", reasoning_content)
             yield response
 
     new_chat_message = RagStudioChatMessage(
