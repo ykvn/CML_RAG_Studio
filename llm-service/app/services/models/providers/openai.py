@@ -125,7 +125,7 @@ class OpenAiModelProvider(_ModelProvider):
             model=name,
             messages_to_prompt=messages_to_prompt,
             completion_to_prompt=completion_to_prompt,
-            max_tokens=2048,
+            #max_tokens=2048,
             context_window=32768,
             is_chat_model=True,
             is_function_calling_model=True,
