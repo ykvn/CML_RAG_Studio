@@ -35,10 +35,9 @@
 #  BUSINESS ADVANTAGE OR UNAVAILABILITY, OR LOSS OR CORRUPTION OF
 #  DATA.
 #
-import logging
 import time
 import uuid
-from typing import Any, Optional, Generator
+from typing import Optional, Generator
 
 from llama_index.core.base.llms.types import ChatResponse, ChatMessage
 from llama_index.core.chat_engine.types import (
@@ -67,52 +66,6 @@ from app.services.query.querier import (
     build_retriever,
 )
 from app.services.query.query_configuration import QueryConfiguration
-
-logger = logging.getLogger(__name__)
-
-
-def _get_reasoning_delta(response: ChatResponse) -> str:
-    """Return the per-chunk reasoning (chain-of-thought) text, if any.
-
-    Safely probes both object attributes and dictionary keys across LlamaIndex,
-    LiteLLM, vLLM, and OpenAI-compatible raw payloads without stripping whitespace.
-    """
-    candidates: list[Any] = []
-
-    # 1. Probe response & message additional_kwargs
-    for obj in (response, getattr(response, "message", None)):
-        if obj and hasattr(obj, "additional_kwargs") and isinstance(obj.additional_kwargs, dict):
-            candidates.append(obj.additional_kwargs.get("thinking_delta"))
-            candidates.append(obj.additional_kwargs.get("reasoning_content"))
-
-    # 2. Probe raw response payload (handles both Dict and Object structures)
-    raw = getattr(response, "raw", None)
-    if raw is not None:
-        choices = raw.get("choices") if isinstance(raw, dict) else getattr(raw, "choices", None)
-        if choices and len(choices) > 0:
-            first_choice = choices[0]
-            delta = (
-                first_choice.get("delta")
-                if isinstance(first_choice, dict)
-                else getattr(first_choice, "delta", None)
-            )
-
-            if delta is not None:
-                for field in ("reasoning_content", "reasoning", "thinking"):
-                    val = (
-                        delta.get(field)
-                        if isinstance(delta, dict)
-                        else getattr(delta, field, None)
-                    )
-                    candidates.append(val)
-
-    # 3. Return the first non-empty string candidate (preserving whitespace and newlines)
-    for candidate in candidates:
-        if isinstance(candidate, str) and len(candidate) > 0:
-            logger.info("Found reasoning token candidate: %r", candidate)
-            return candidate
-
-    return ""
 
 
 def stream_chat(
@@ -174,20 +127,6 @@ def _run_streaming_chat(
     if streaming_chat_response.chat_stream:
         for response in streaming_chat_response.chat_stream:
             response.additional_kwargs["response_id"] = response_id
-
-            # Extract raw reasoning tokens if the model provides them
-            # (e.g. DeepSeek-R1 or Qwen reasoning models via LiteLLM/vLLM)
-            reasoning_content = _get_reasoning_delta(response)
-            if reasoning_content:
-                response.additional_kwargs["reasoning_content"] = reasoning_content
-                logger.info("[STREAM_CHAT] Streaming reasoning token: %r", reasoning_content)
-            else:
-                logger.debug(
-                    "[STREAM_CHAT] Standard token: %r | raw: %r",
-                    response.delta,
-                    getattr(response, "raw", None),
-                )
-
             yield response
 
     chat_response = AgentChatResponse(
@@ -263,10 +202,6 @@ def _stream_direct_llm_chat(
         response = ChatResponse(message=ChatMessage(content=query))
         for response in chat_response:
             response.additional_kwargs["response_id"] = response_id
-            reasoning_content = _get_reasoning_delta(response)
-            if reasoning_content:
-                response.additional_kwargs["reasoning_content"] = reasoning_content
-                logger.info("[DIRECT_LLM] Streaming reasoning token: %r", reasoning_content)
             yield response
 
     new_chat_message = RagStudioChatMessage(
