@@ -127,6 +127,20 @@ def _run_streaming_chat(
     if streaming_chat_response.chat_stream:
         for response in streaming_chat_response.chat_stream:
             response.additional_kwargs["response_id"] = response_id
+            
+            # --- START FIX: Extract reasoning content ---
+            # Extract raw reasoning tokens if the model provides them 
+            # (e.g. DeepSeek-R1 or Qwen reasoning models via LiteLLM)
+            raw_chunk = getattr(response, "raw", None)
+            if raw_chunk and hasattr(raw_chunk, "choices") and len(raw_chunk.choices) > 0:
+                delta = getattr(raw_chunk.choices[0], "delta", None)
+                if delta:
+                    # Capture reasoning_content and pass it to the frontend via additional_kwargs
+                    reasoning_content = getattr(delta, "reasoning_content", None)
+                    if reasoning_content:
+                        response.additional_kwargs["reasoning_content"] = reasoning_content
+            # --- END FIX ---
+            
             yield response
 
     chat_response = AgentChatResponse(
