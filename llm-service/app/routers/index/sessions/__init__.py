@@ -337,6 +337,14 @@ def stream_chat_completion(
                     yield f"data: {event_json}\n\n"
                     first_message = False
                 response_id = response.additional_kwargs["response_id"]
+                # Emit reasoning content (e.g. chain-of-thought from Qwen3/DeepSeek)
+                # as its own SSE frame so it is visible in the response body.
+                reasoning_content = response.additional_kwargs.get("reasoning_content")
+                if reasoning_content:
+                    json_reasoning = json.dumps(
+                        {"reasoning_content": reasoning_content}
+                    )
+                    yield f"data: {json_reasoning}\n\n"
                 if response.delta:
                     json_delta = json.dumps({"text": response.delta})
                     yield f"data: {json_delta}\n\n"

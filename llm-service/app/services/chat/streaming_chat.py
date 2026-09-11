@@ -216,6 +216,15 @@ def _stream_direct_llm_chat(
         response = ChatResponse(message=ChatMessage(content=query))
         for response in chat_response:
             response.additional_kwargs["response_id"] = response_id
+            # Extract reasoning content (e.g. chain-of-thought from Qwen3/DeepSeek)
+            # so it can be streamed to the frontend.
+            raw_chunk = getattr(response, "raw", None)
+            if raw_chunk and hasattr(raw_chunk, "choices") and len(raw_chunk.choices) > 0:
+                delta = getattr(raw_chunk.choices[0], "delta", None)
+                if delta:
+                    reasoning_content = getattr(delta, "reasoning_content", None)
+                    if reasoning_content:
+                        response.additional_kwargs["reasoning_content"] = reasoning_content
             yield response
 
     new_chat_message = RagStudioChatMessage(
