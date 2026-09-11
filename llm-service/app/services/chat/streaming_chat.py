@@ -74,31 +74,43 @@ logger = logging.getLogger(__name__)
 def _get_reasoning_delta(response: ChatResponse) -> str:
     """Return the per-chunk reasoning (chain-of-thought) text, if any.
 
-    Different llama-index versions and OpenAI-compatible servers (Qwen, DeepSeek,
-    vLLM, Ollama) surface streamed reasoning tokens under different keys, so probe
-    each candidate and return the first non-empty value found:
-      - ChatResponse.additional_kwargs: ``thinking_delta`` (llama-index >= ~0.12),
-        ``reasoning_content``
-      - message.additional_kwargs: ``thinking_delta``, ``reasoning_content``
-      - raw.choices[0].delta: ``reasoning_content`` (official), ``reasoning`` (vLLM)
+    Safely probes both object attributes and dictionary keys across LlamaIndex,
+    LiteLLM, vLLM, and OpenAI-compatible raw payloads without stripping whitespace.
     """
-    candidates: list[Any] = [
-        response.additional_kwargs.get("thinking_delta"),
-        response.additional_kwargs.get("reasoning_content"),
-        response.message.additional_kwargs.get("thinking_delta"),
-        response.message.additional_kwargs.get("reasoning_content"),
-    ]
-    raw_delta = None
-    try:
-        raw_delta = response.raw.choices[0].delta
-    except (AttributeError, IndexError, TypeError):
-        raw_delta = None
-    if raw_delta is not None:
-        for field_name in ("reasoning_content", "reasoning"):
-            candidates.append(getattr(raw_delta, field_name, None))
+    candidates: list[Any] = []
+
+    # 1. Probe response & message additional_kwargs
+    for obj in (response, getattr(response, "message", None)):
+        if obj and hasattr(obj, "additional_kwargs") and isinstance(obj.additional_kwargs, dict):
+            candidates.append(obj.additional_kwargs.get("thinking_delta"))
+            candidates.append(obj.additional_kwargs.get("reasoning_content"))
+
+    # 2. Probe raw response payload (handles both Dict and Object structures)
+    raw = getattr(response, "raw", None)
+    if raw is not None:
+        choices = raw.get("choices") if isinstance(raw, dict) else getattr(raw, "choices", None)
+        if choices and len(choices) > 0:
+            first_choice = choices[0]
+            delta = (
+                first_choice.get("delta")
+                if isinstance(first_choice, dict)
+                else getattr(first_choice, "delta", None)
+            )
+
+            if delta is not None:
+                for field in ("reasoning_content", "reasoning", "thinking"):
+                    val = (
+                        delta.get(field)
+                        if isinstance(delta, dict)
+                        else getattr(delta, field, None)
+                    )
+                    candidates.append(val)
+
+    # 3. Return the first non-empty string candidate (preserving whitespace and newlines)
     for candidate in candidates:
-        if isinstance(candidate, str) and candidate.strip():
+        if isinstance(candidate, str) and len(candidate) > 0:
             return candidate
+
     return ""
 
 
@@ -162,15 +174,12 @@ def _run_streaming_chat(
         for response in streaming_chat_response.chat_stream:
             response.additional_kwargs["response_id"] = response_id
 
-            # --- START FIX: Extract reasoning content ---
             # Extract raw reasoning tokens if the model provides them
             # (e.g. DeepSeek-R1 or Qwen reasoning models via LiteLLM/vLLM)
             reasoning_content = _get_reasoning_delta(response)
             if reasoning_content:
-                # Pass the reasoning to the frontend via additional_kwargs
                 response.additional_kwargs["reasoning_content"] = reasoning_content
                 logger.debug("Streamed reasoning token: %r", reasoning_content)
-            # --- END FIX ---
 
             yield response
 
@@ -247,8 +256,6 @@ def _stream_direct_llm_chat(
         response = ChatResponse(message=ChatMessage(content=query))
         for response in chat_response:
             response.additional_kwargs["response_id"] = response_id
-            # Extract reasoning content (e.g. chain-of-thought from Qwen3/DeepSeek)
-            # so it can be streamed to the frontend.
             reasoning_content = _get_reasoning_delta(response)
             if reasoning_content:
                 response.additional_kwargs["reasoning_content"] = reasoning_content
