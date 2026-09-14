@@ -528,27 +528,47 @@ def update_project_environment(new_env: dict[str, str]) -> None:
 
 class CMLApplication(Protocol):
     name: str
+    subdomain: str
     nvidia_gpu: int
     memory: float
 
 
 def get_application_config() -> ApplicationConfig:
     """
-    Returns the number of GPUs available in the environment.
+    Returns the number of GPUs and amount of memory available to the current CML
+    Application, so the frontend can decide whether enhanced PDF processing is
+    feasible.
+
+    No application name is assumed. The application we are running in is
+    identified by comparing the running instance's subdomain
+    (``CDSW_APP_SUBDOMAIN``) against the applications exposed by CML. If it
+    cannot be resolved, the resources are reported as zero.
     """
     try:
         import cmlapi
 
+        current_subdomain = os.environ.get("CDSW_APP_SUBDOMAIN")
+        if not current_subdomain:
+            return ApplicationConfig(
+                num_of_gpus=0,
+                memory_size_gb=0,
+            )
+
         client = cmlapi.default_client()
         project_id = settings.cdsw_project_id
         apps = client.list_applications(project_id=project_id)
-        ragstudio_app: CMLApplication | None = next(
-            (app for app in apps.applications if app.name == "RagStudio"), None
+        current_app: CMLApplication | None = next(
+            (
+                app
+                for app in apps.applications
+                if (getattr(app, "subdomain", None) or "") == current_subdomain
+            ),
+            None,
         )
-        if ragstudio_app is not None:
+        if current_app is not None:
             return ApplicationConfig(
-                num_of_gpus=ragstudio_app.nvidia_gpu,
-                memory_size_gb=ragstudio_app.memory,
+                num_of_gpus=current_app.nvidia_gpu,
+                memory_size_gb=current_app.memory,
             )
     except ImportError:
         pass
