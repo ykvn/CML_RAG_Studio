@@ -539,36 +539,49 @@ def get_application_config() -> ApplicationConfig:
     Application, so the frontend can decide whether enhanced PDF processing is
     feasible.
 
-    No application name is assumed. The application we are running in is
+    No application name is assumed. The application we are running in is first
     identified by comparing the running instance's subdomain
     (``CDSW_APP_SUBDOMAIN``) against the applications exposed by CML. If it
-    cannot be resolved, the resources are reported as zero.
+    cannot be resolved (for example when that environment variable is not
+    exposed), we fall back to reporting the CML Application with the most
+    resources (memory, then GPU) so the check is based purely on the available
+    resources rather than the app's name.
     """
     try:
         import cmlapi
 
-        current_subdomain = os.environ.get("CDSW_APP_SUBDOMAIN")
-        if not current_subdomain:
-            return ApplicationConfig(
-                num_of_gpus=0,
-                memory_size_gb=0,
-            )
-
         client = cmlapi.default_client()
         project_id = settings.cdsw_project_id
         apps = client.list_applications(project_id=project_id)
-        current_app: CMLApplication | None = next(
-            (
-                app
-                for app in apps.applications
-                if (getattr(app, "subdomain", None) or "") == current_subdomain
-            ),
-            None,
-        )
-        if current_app is not None:
+        available = list(apps.applications or [])
+
+        # Prefer the current application, matched by the running subdomain.
+        current_subdomain = os.environ.get("CDSW_APP_SUBDOMAIN")
+        if current_subdomain:
+            current_app: CMLApplication | None = next(
+                (
+                    app
+                    for app in available
+                    if (getattr(app, "subdomain", None) or "") == current_subdomain
+                ),
+                None,
+            )
+            if current_app is not None:
+                return ApplicationConfig(
+                    num_of_gpus=current_app.nvidia_gpu,
+                    memory_size_gb=current_app.memory,
+                )
+
+        # Fallback: report the application with the most resources so the gate
+        # still works even when the current app can't be identified.
+        if available:
+            best = max(
+                available,
+                key=lambda app: ((app.memory or 0), (app.nvidia_gpu or 0)),
+            )
             return ApplicationConfig(
-                num_of_gpus=current_app.nvidia_gpu,
-                memory_size_gb=current_app.memory,
+                num_of_gpus=best.nvidia_gpu,
+                memory_size_gb=best.memory,
             )
     except ImportError:
         pass
