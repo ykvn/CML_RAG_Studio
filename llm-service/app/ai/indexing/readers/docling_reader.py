@@ -40,8 +40,12 @@ import logging
 from pathlib import Path
 from typing import List, Any
 
+# Added explicit Docling configuration imports
+from docling.datamodel.base_models import InputFormat
 from docling.datamodel.document import ConversionResult
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+
 from docling_core.transforms.chunker.base import BaseChunk
 from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from llama_index.core.schema import Document, TextNode, NodeRelationship
@@ -62,18 +66,43 @@ class DoclingReader(BaseReader):
         self._add_document_metadata(document, file_path)
         parent = document.as_related_node_info()
 
+        # 1. Enable Advanced OCR and Table Structure parsing
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = True 
+        pipeline_options.do_table_structure = True
+        pipeline_options.generate_page_images = False
+
+        # 2. Bind pipeline options to the PDF format converter
+        converter = DocumentConverter(
+            allowed_formats=[InputFormat.PDF],
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+        )
+
         converted_chunks: List[TextNode] = []
         logger.debug(f"{file_path=}")
-        docling_doc: ConversionResult = DocumentConverter().convert(file_path)
+        
+        # 3. Process document with the enhanced converter
+        docling_doc: ConversionResult = converter.convert(file_path)
         chunky_chunks = HybridChunker(serializer_provider=MarkdownSerializerProvider()).chunk(docling_doc.document)
+        
         chunky_chunk: BaseChunk
         for i, chunky_chunk in enumerate(chunky_chunks):
             page_number: int = 0
             if not hasattr(chunky_chunk.meta, "doc_items"):
                 logger.warning(f"Chunk {i} is empty, skipping")
                 continue
+            
+            # 4. Filter out structural noise (empty Markdown tables)
+            clean_text = chunky_chunk.text.replace("|", "").replace("-", "").replace("\n", "").strip()
+            if not clean_text:
+                logger.warning(f"Chunk {i} contains only empty markdown formatting, skipping.")
+                continue
+
             for item in chunky_chunk.meta.doc_items:
-                page_number= item.prov[0].page_no if item.prov else None
+                page_number = item.prov[0].page_no if item.prov else None
+                
             node = TextNode(text=chunky_chunk.text)
             if page_number:
                 node.metadata["page_number"] = page_number
@@ -86,4 +115,5 @@ class DoclingReader(BaseReader):
                 {NodeRelationship.SOURCE: parent}
             )
             converted_chunks.append(node)
+            
         return ChunksResult(converted_chunks)
