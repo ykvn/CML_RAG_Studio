@@ -46,9 +46,7 @@ export const ProcessingFields = ({
   projectConfig?: ProjectConfig | null;
 }) => {
   const sufficientResources = Boolean(
-    projectConfig &&
-      projectConfig.application_config.num_of_gpus > 0 &&
-      projectConfig.application_config.memory_size_gb >= 16,
+    projectConfig && projectConfig.application_config.memory_size_gb >= 16,
   );
   return (
     <Flex vertical style={{ maxWidth: 600 }}>
@@ -59,7 +57,7 @@ export const ProcessingFields = ({
         valuePropName="checked"
         tooltip={
           sufficientResources
-            ? "Use enhanced PDF processing for better text extraction. This option makes PDF parsing take significantly longer. A GPU and at least 16GB of RAM is required for this option."
+            ? "Use enhanced PDF processing for better text extraction. This option makes PDF parsing take significantly longer. At least 16GB of RAM is required; a GPU is recommended for best performance and to avoid crashes."
             : {
                 title: (
                   <div>
@@ -72,9 +70,9 @@ export const ProcessingFields = ({
                     <Typography.Paragraph style={{ color: cdlWhite }}>
                       The CML Application has insufficient resources to enable
                       advanced parsing. Please make sure you have at least 16GB
-                      of RAM and a GPU available. Failure to do so may crash the
-                      application. Resources can be modified from within the CML
-                      Application settings.
+                      of RAM. A GPU is recommended for best performance; failure
+                      to do so may crash the application. Resources can be
+                      modified from within the CML Application settings.
                     </Typography.Paragraph>
                   </div>
                 ),
@@ -91,7 +89,7 @@ export const ProcessingFields = ({
               ) {
                 return Promise.reject(
                   new Error(
-                    "Insufficient resources available for enhanced PDF processing. Please make sure you have at least 16GB of RAM and a GPU available.  Failure to do so may crash the application.  Resources can be modified from within the CML Project.",
+                    "Insufficient resources available for enhanced PDF processing. Please make sure you have at least 16GB of RAM. A GPU is recommended for best performance; failure to do so may crash the application. Resources can be modified from within the CML Project.",
                   ),
                 );
               }
