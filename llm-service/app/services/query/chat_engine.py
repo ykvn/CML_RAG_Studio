@@ -66,38 +66,52 @@ from .. import llm_completion, models
 logger = logging.getLogger(__name__)
 
 CUSTOM_CONTEXT_PROMPT_TEMPLATE = """\
-The following is a friendly conversation between a user and an AI assistant. \
-The assistant is talkative and provides lots of specific details from its context. \
-If the assistant does not know the answer to a question, it truthfully says it \
-does not know. 
+Berikut adalah percakapan antara pengguna dan asisten AI. \
+Asisten memberikan jawaban secara detail dan spesifik berdasarkan konteks yang diberikan. \
+Jika asisten tidak mengetahui jawaban dari suatu pertanyaan, asisten akan menyatakan bahwa ia tidak mengetahuinya.
 
-As the assistant, please provide an answer based solely on the provided sources with \
-citations to the paragraphs. When referencing information from a source, \
-cite the appropriate source(s) using their corresponding ids. \
-Every answer/paragraph should include at least one source citation. \
-Only cite a source when you are explicitly referencing it. \
-The citations should be the href of an anchor tag (<a class="rag_citation" href=CITATION_HERE></a>), \
-and (IMPORTANT) in-line with the text. No footnotes or endnotes. \
-If none of the sources are helpful, you should indicate that. \
-Do not make up source ids for citations. Only use the source ids \
-provided in the contexts. \
-For example:
+Sebagai asisten, berikan jawaban hanya berdasarkan sumber-sumber yang diberikan dengan \
+menyertakan sitasi pada paragraf. Saat mereferensikan informasi dari sebuah sumber, \
+sebutkan sumber yang sesuai menggunakan ID masing-masing. \
+Setiap jawaban atau paragraf harus menyertakan setidaknya satu sitasi sumber. \
+Hanya buat sitasi jika Anda secara eksplisit mereferensikannya. \
+Sitasi harus menggunakan tag anchor (<a class="rag_citation" href="CITATION_HERE"></a>) \
+dan (SANGAT PENTING) diletakkan langsung di dalam teks (in-line). Jangan gunakan catatan kaki atau catatan akhir. \
+Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
+Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
+
+Aturan Tambahan Jawaban:
+Di bagian paling akhir setiap jawaban, wajib buat pemisah "---" dan berikan 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan.
+
+Format keluaran akhir:
+---
+💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
+1. [Pertanyaan drill-down spesifik]
+2. [Pertanyaan perbandingan produk/kategori/wilayah lain]
+3. [Pertanyaan tren waktu/breakdown detail]
+
+Sebagai contoh:
 
 <Contexts>
 Source: 1
-The sky is red in the evening and blue in the morning.
+Langit berwarna merah di sore hari dan biru di pagi hari.
 
 Source: 2
-Water is wet when the sky is red.
+Air terasa basah ketika langit berwarna merah.
 
 <Query>
-When is water wet?
+Kapan air terasa basah?
 
 <Answer>
-Water will be wet when the sky is red<a class="rag_citation" href="1"></a>, \
-which occurs in the evening<a class="rag_citation" href="2"></a>.
+Air akan terasa basah ketika langit berwarna merah<a class="rag_citation" href="1"></a>, \
+yang terjadi pada sore hari<a class="rag_citation" href="2"></a>.
 
-Now it's your turn. Below are several numbered sources of information:
+---
+💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
+1. Berapa suhu air saat langit berwarna merah?
+2. Apakah air tetap basah pada pagi hari?
+
+Sekarang giliran Anda. Di bawah ini adalah beberapa sumber informasi terhitung:
 
 <Contexts>
 {context_str}
@@ -110,46 +124,39 @@ Now it's your turn. Below are several numbered sources of information:
 
 
 CUSTOM_CONTEXT_REFINE_PROMPT_TEMPLATE = """\
-The following is a friendly conversation between a user and an AI assistant. \
-The assistant is talkative and provides lots of specific details from its context. \
-If the assistant does not know the answer to a question, it truthfully says \
-it does not know.
+Berikut adalah percakapan antara pengguna dan asisten AI. \
+Asisten memberikan jawaban secara detail dan spesifik berdasarkan konteks yang diberikan. \
+Jika asisten tidak mengetahui jawaban dari suatu pertanyaan, asisten akan menyatakan bahwa ia tidak mengetahuinya.
 
-As the assistant, please provide an answer based solely on the provided sources with \
-citations to the paragraphs. When referencing information from a source, \
-cite the appropriate source(s) using their corresponding ids. \
-Every answer/paragraph should include at least one source citation. \
-Only cite a source when you are explicitly referencing it. \
-The citations should be the href of an anchor tag (<a class="rag_citation" href=CITATION_HERE></a>), \
-and (IMPORTANT) in-line with the text. No footnotes or endnotes. \
-If none of the sources are helpful, you should indicate that. \
-Do not make up source ids for citations. Only use the source ids \
-provided in the contexts. \
-For example:
+Sebagai asisten, berikan jawaban hanya berdasarkan sumber-sumber yang diberikan dengan \
+menyertakan sitasi pada paragraf. Saat mereferensikan informasi dari sebuah sumber, \
+sebutkan sumber yang sesuai menggunakan ID masing-masing. \
+Setiap jawaban atau paragraf harus menyertakan setidaknya satu sitasi sumber. \
+Hanya buat sitasi jika Anda secara eksplisit mereferensikannya. \
+Sitasi harus menggunakan tag anchor (<a class="rag_citation" href="CITATION_HERE"></a>) \
+dan (SANGAT PENTING) diletakkan langsung di dalam teks (in-line). Jangan gunakan catatan kaki atau catatan akhir. \
+Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
+Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
 
-<Contexts>
-Source: 1
-The sky is red in the evening and blue in the morning.
+Aturan Tambahan Jawaban:
+Di bagian paling akhir setiap jawaban, wajib buat pemisah "---" dan berikan 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan.
 
-Source: 2
-Water is wet when the sky is red.
+Format keluaran akhir:
+---
+💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
+1. [Pertanyaan drill-down spesifik]
+2. [Pertanyaan perbandingan produk/kategori/wilayah lain]
+3. [Pertanyaan tren waktu/breakdown detail]
 
-<Query>
-When is water wet?
-
-<Answer> 
-Water will be wet when the sky is red<a class="rag_citation" href="1"></a>, \
-which occurs in the evening<a class="rag_citation" href="2"></a>.
-
-Now it's your turn. We have provided an existing answer: 
+Sekarang giliran Anda. Kami telah menyediakan jawaban yang sudah ada sebelumnya:
 
 <Existing Answer>
 {existing_answer}
 
-Below are several numbered sources of information.
-Use them to refine the existing answer.
-If the provided sources are not helpful, you will repeat the existing answer.
-Begin refining!
+Di bawah ini adalah beberapa sumber informasi terhitung.
+Gunakan sumber tersebut untuk memperjelas jawaban yang ada.
+Jika sumber yang diberikan tidak membantu, ulangi kembali jawaban yang sudah ada.
+Mulai perjelas!
 
 <Contexts>
 {context_msg}
@@ -161,17 +168,17 @@ Begin refining!
 """
 
 CUSTOM_CONDENSE_TEMPLATE = """\
-Given a conversation (between Human and Assistant) and a follow up message from Human, \
-rewrite the message to be a standalone question that captures all relevant context \
-from the conversation. Just provide the question, not any description of it.
+Berdasarkan percakapan (antara Pengguna dan Asisten) serta pesan lanjutan dari Pengguna, \
+tulis ulang pesan tersebut menjadi pertanyaan mandiri yang mencakup seluruh konteks \
+relevan dari percakapan. Berikan pertanyaannya saja, tanpa penjelasan atau deskripsi tambahan.
 
-<Chat History>
+<Riwayat Obrolan>
 {chat_history}
 
-<Follow Up Message>
+<Pesan Lanjutan>
 {question}
 
-<Standalone question>
+<Pertanyaan Mandiri>
 """
 
 CUSTOM_CONDENSE_PROMPT = PromptTemplate(CUSTOM_CONDENSE_TEMPLATE)
