@@ -97,13 +97,21 @@ class OpenAiRerankingModel(BaseNodePostprocessor):
                 node.node.get_content(metadata_mode=MetadataMode.EMBED)
                 for node in nodes
             ],
-            # Dynamically cap top_n to prevent vLLM from crashing
-            "top_n": min(self.top_n, len(nodes)), 
+            "top_n": min(self.top_n, len(nodes)),
         }
 
         response = OpenAiModelProvider._http_client().post(
             url, headers=headers, json=payload
         )
+        
+        # --- DEBUG ---
+        if response.status_code != 200:
+            error_msg = f"LiteLLM/vLLM Error (Status {response.status_code}): {response.text}\nPayload sent: {payload}\nHeaders sent: {headers}"
+            import logging
+            logging.getLogger(__name__).error(error_msg)
+            raise RuntimeError(error_msg)
+        # -----------------------
+
         response.raise_for_status()
 
         results = (response.json() or {}).get("results") or []
