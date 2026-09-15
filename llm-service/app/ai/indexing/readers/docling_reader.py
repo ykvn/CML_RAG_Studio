@@ -48,11 +48,16 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.base import BaseChunk
 from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from llama_index.core.schema import Document, NodeRelationship, TextNode
+from transformers import AutoTokenizer
 
 from .base_reader import BaseReader, ChunksResult
 from .pdf import MarkdownSerializerProvider
 
 logger = logging.getLogger(__name__)
+
+# Offline Model Paths inside CDSW Environment
+DOCLING_ARTIFACTS_PATH = Path("/home/cdsw/llm-service/models/docling_models")
+TOKENIZER_PATH = "/home/cdsw/llm-service/models/bge-m3-tokenizer"
 
 
 def clean_ocr_kerning(text: str) -> str:
@@ -76,11 +81,12 @@ class DoclingReader(BaseReader):
         self._add_document_metadata(document, file_path)
         parent = document.as_related_node_info()
 
-        # 1. Pipeline Options: Upscale raster resolution directly on PdfPipelineOptions
+        # 1. Offline Pipeline Options: Point to local model artifacts & upscale image scale
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         pipeline_options.do_table_structure = True
         pipeline_options.images_scale = 3.0  # High-definition 3x scale to prevent OCR blurring
+        pipeline_options.artifacts_path = DOCLING_ARTIFACTS_PATH  # Offline model directory
         pipeline_options.ocr_options = EasyOcrOptions()
 
         converter = DocumentConverter(
@@ -103,9 +109,12 @@ class DoclingReader(BaseReader):
                     if chart_text:
                         item.text = f"[CHART DATA]: {chart_text}"
 
-        # 3. Hybrid Chunker: Increase token budget to 4096 to prevent table fragmentation
+        # 3. Hybrid Chunker: Load local bge-m3 tokenizer & configure 4096 token limit
+        tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_PATH)
+
         chunker = HybridChunker(
             serializer_provider=MarkdownSerializerProvider(),
+            tokenizer=tokenizer,
             max_tokens=4096,
             merge_peers=True,
         )
