@@ -97,7 +97,8 @@ class OpenAiRerankingModel(BaseNodePostprocessor):
                 node.node.get_content(metadata_mode=MetadataMode.EMBED)
                 for node in nodes
             ],
-            "top_n": self.top_n,
+            # Dynamically cap top_n to prevent vLLM from crashing
+            "top_n": min(self.top_n, len(nodes)), 
         }
 
         response = OpenAiModelProvider._http_client().post(
