@@ -42,11 +42,37 @@ import httpx
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
+from llama_index.postprocessor.nvidia_rerank import NVIDIARerank
 
 from ._model_provider import _ModelProvider
 from ...caii.types import ModelResponse
 from ...llama_utils import completion_to_prompt, messages_to_prompt
 from ....config import settings, ModelSource
+
+
+class OpenAiRerankingModel(NVIDIARerank):
+    """OpenAI-compatible reranking model (e.g. BGE reranker v2 m3)."""
+
+    def __init__(
+        self,
+        model: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        **kwargs: object,
+    ) -> None:
+        super().__init__(
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            truncate="END",
+            **kwargs,
+        )
+
+    def _validate_url(self, base_url: str) -> str:
+        return base_url
+
+    def _validate_model(self, model_name: str) -> None:
+        pass
 
 
 class OpenAiModelProvider(_ModelProvider):
@@ -155,7 +181,12 @@ class OpenAiModelProvider(_ModelProvider):
 
     @staticmethod
     def get_reranking_model(name: str, top_n: int) -> BaseNodePostprocessor:
-        raise NotImplementedError("No reranking models available")
+        return OpenAiRerankingModel(
+            model=name,
+            base_url=settings.openai_api_base,
+            api_key=settings.openai_api_key,
+            top_n=top_n,
+        )
 
 
 # ensure interface is implemented
