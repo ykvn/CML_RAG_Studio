@@ -59,10 +59,10 @@ def clean_ocr_kerning(text: str) -> str:
     """Safely repairs OCR character splitting without altering regular text."""
     # 1. Replace non-printable private Unicode replacement characters (\ue353 -> :)
     cleaned = re.sub(r"[\ue000-\uf8ff]", ":", text)
-    
+
     # 2. Safely join sequences of 2+ isolated uppercase letters (e.g., "M A W X" -> "MAWX", "A B C" -> "ABC")
-    cleaned = re.sub(r'\b[A-Z](?:\s+[A-Z])+\b', lambda m: m.group(0).replace(" ", ""), cleaned)
-    
+    cleaned = re.sub(r"\b[A-Z](?:\s+[A-Z])+\b", lambda m: m.group(0).replace(" ", ""), cleaned)
+
     return cleaned
 
 
@@ -76,11 +76,12 @@ class DoclingReader(BaseReader):
         self._add_document_metadata(document, file_path)
         parent = document.as_related_node_info()
 
-        # 1. OCR Options: Upscale DPI for high-definition text & grid detection
+        # 1. Pipeline Options: Upscale raster resolution directly on PdfPipelineOptions
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         pipeline_options.do_table_structure = True
-        pipeline_options.ocr_options = EasyOcrOptions(scale=3.0)
+        pipeline_options.images_scale = 3.0  # High-definition 3x scale to prevent OCR blurring
+        pipeline_options.ocr_options = EasyOcrOptions()
 
         converter = DocumentConverter(
             allowed_formats=[InputFormat.PDF],
