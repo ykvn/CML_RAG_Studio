@@ -40,9 +40,10 @@ from typing import Optional
 
 import httpx
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
+from llama_index.core.schema import MetadataMode, NodeWithScore, QueryBundle
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai_like import OpenAILike
-from llama_index.postprocessor.nvidia_rerank import NVIDIARerank
+from pydantic import Field
 
 from ._model_provider import _ModelProvider
 from ...caii.types import ModelResponse
@@ -50,29 +51,74 @@ from ...llama_utils import completion_to_prompt, messages_to_prompt
 from ....config import settings, ModelSource
 
 
-class OpenAiRerankingModel(NVIDIARerank):
-    """OpenAI-compatible reranking model (e.g. BGE reranker v2 m3)."""
+class OpenAiRerankingModel(BaseNodePostprocessor):
+    """Rerank nodes via an OpenAI-compatible `/v1/rerank` endpoint (litellm/vLLM).
 
-    def __init__(
+    Uses the litellm/vLLM rerank protocol:
+        POST {base}/v1/rerank
+        body: {"model", "query", "documents": [...], "top_n"}
+        response: {"results": [{"index", "relevance_score", ...}]}
+    """
+
+    model: Optional[str] = Field(
+        default=None,
+        description="Gateways-exposed reranker model name, e.g. bge-reranker-v2-m3.",
+    )
+    top_n: int = Field(default=5, gt=0, description="Number of nodes to return.")
+
+    def _postprocess_nodes(
         self,
-        model: Optional[str] = None,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        **kwargs: object,
-    ) -> None:
-        super().__init__(
-            model=model,
-            api_key=api_key,
-            base_url=base_url,
-            truncate="END",
-            **kwargs,
+        nodes: list[NodeWithScore],
+        query_bundle: Optional[QueryBundle] = None,
+    ) -> list[NodeWithScore]:
+        if query_bundle is None:
+            raise ValueError(
+                "Missing query bundle in extra info. Please do not give empty query!"
+            )
+        if not nodes:
+            return []
+
+        base_url = (settings.openai_api_base or "").rstrip("/")
+        if base_url.endswith("/v1"):
+            base_url = base_url[: -len("/v1")]
+        url = f"{base_url}/v1/rerank"
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        if settings.openai_api_key:
+            headers["Authorization"] = f"Bearer {settings.openai_api_key}"
+
+        payload = {
+            "model": self.model,
+            "query": query_bundle.query_str,
+            "documents": [
+                node.node.get_content(metadata_mode=MetadataMode.EMBED)
+                for node in nodes
+            ],
+            "top_n": self.top_n,
+        }
+
+        response = OpenAiModelProvider._http_client().post(
+            url, headers=headers, json=payload
         )
+        response.raise_for_status()
 
-    def _validate_url(self, base_url: str) -> str:
-        return base_url
+        results = (response.json() or {}).get("results") or []
+        ranked: list[tuple[float, int]] = []
+        for result in results:
+            index = result.get("index")
+            score = result.get("relevance_score")
+            if index is not None and index < len(nodes):
+                ranked.append((float(score), int(index)))
 
-    def _validate_model(self, model_name: str) -> None:
-        pass
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        ranked = ranked[: self.top_n]
+        return [
+            NodeWithScore(node=nodes[index].node, score=score)
+            for score, index in ranked
+        ]
 
 
 class OpenAiModelProvider(_ModelProvider):
@@ -183,8 +229,6 @@ class OpenAiModelProvider(_ModelProvider):
     def get_reranking_model(name: str, top_n: int) -> BaseNodePostprocessor:
         return OpenAiRerankingModel(
             model=name,
-            base_url=settings.openai_api_base,
-            api_key=settings.openai_api_key,
             top_n=top_n,
         )
 
