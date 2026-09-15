@@ -103,7 +103,12 @@ class OpenAiModelProvider(_ModelProvider):
 
     @staticmethod
     def list_reranking_models() -> list[ModelResponse]:
-        return []
+        return [
+            ModelResponse(
+                model_id="bge-reranker-v2-m3",
+                name="bge-reranker-v2-m3",
+            ),
+        ]
 
     @staticmethod
     def _http_client() -> Optional[httpx.Client]:
