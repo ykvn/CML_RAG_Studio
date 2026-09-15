@@ -52,16 +52,13 @@ from app.services.query.query_configuration import QueryConfiguration
 logger = logging.getLogger(__name__)
 
 SAMPLE_QUESTIONS = [
-    "What is Cloudera, and how does it support organizations in managing big data?",
-    "What are the key components of the Cloudera Data Platform (CDP), and how do they work together?",
-    "How does Cloudera enable hybrid and multi-cloud data management for enterprises?",
-    "What are the primary use cases for Cloudera's platform in industries such as finance, healthcare, and retail?",
-    "How does Cloudera ensure data security and compliance with regulations like GDPR, HIPAA, and CCPA?",
-    "What is the role of Apache Hadoop and Apache Spark in Cloudera's ecosystem, and how do they contribute to data processing?",
-    "How does Cloudera's platform support machine learning and artificial intelligence workflows?",
-    "What are the differences between Cloudera Data Platform (CDP) Public Cloud and CDP Private Cloud?",
-    "How does Cloudera's platform handle data ingestion, storage, and real-time analytics at scale?",
-    "What tools and features does Cloudera provide for data governance, lineage, and cataloging?,",
+    "Apa aspirasi jangka panjang BNI di tahun 2028 dan pendekatan 4D yang digunakan dalam menyusun Corporate Plan 2024-2028?",
+    "Apa saja 6 (enam) strategi utama BNI yang ditetapkan untuk tahun 2024-2028?",
+    "Bagaimana pencapaian dan peran aplikasi 'wondr by BNI' serta platform 'BNIdirect' dalam transformasi digital BNI tahun 2024-2028?",
+    "Bagaimana peran BNI Xpora dan jaringan kantor Luar Negeri (KLN) BNI dalam mendukung UKM Indonesia menembus pasar global?",
+    "Apa fungsi dan cakupan siklus kredit yang dikelola melalui Loan Management System (LMS) Wholesale BNI?",
+    "Bagaimana BNI menerapkan konsep hybrid branch dan inovasi e-channel untuk mengoptimalkan operasional outlet-nya?",
+    "Bagaimana BNI memperkuat human capital dan produktivitas Relationship Manager (RM) melalui penggunaan tools seperti Connect dan Digisales?",
 ]
 
 
