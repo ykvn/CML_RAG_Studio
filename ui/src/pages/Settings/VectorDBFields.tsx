@@ -73,8 +73,8 @@ export const VectorDBFields = ({
     {selectedVectorDBProvider === "EXTERNAL_QDRANT" && (
       <StyledHelperText>
         An externally hosted Qdrant server will be used as the vector database.
-        Provide the full URL (e.g. https://qdrant.example.com). No database name
-        is required — Qdrant collections are created automatically.
+        Provide the full URL (e.g. https://qdrant.cai.apps.dataservices.bni.co.id).
+        Qdrant collections are created automatically.
       </StyledHelperText>
     )}
     {selectedVectorDBProvider === "CHROMADB" ? (
