@@ -95,12 +95,12 @@ const helpText = {
     <Typography>
       <ul>
         <li>
-          OpenAI models must be enabled in the OpenAI portal to use them within
-          RAG Studio.
+          The OpenAI-compatible configuration allows RAG Studio to connect to
+          models deployed on Cloudera CML through an OpenAI-compatible API.
         </li>
         <li>
-          At least one Inference and one Embedding model must available in the
-          OpenAI portal.
+          At least one Inference model and one Embedding model must be deployed
+          and accessible through the configured OpenAI-compatible endpoints.
         </li>
       </ul>
     </Typography>
