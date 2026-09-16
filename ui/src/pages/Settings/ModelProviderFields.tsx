@@ -74,6 +74,8 @@ export const ModelProviderFields = ({
       value={modelProvider}
       options={[
         { value: "CAII", label: "Cloudera AI" },
+      //  { value: "Bedrock", label: "AWS Bedrock" },
+      //  { value: "Azure", label: "Azure OpenAI" },
         { value: "OpenAI", label: "OpenAI Compatible" },
       ]}
       disabled={!enableModification}

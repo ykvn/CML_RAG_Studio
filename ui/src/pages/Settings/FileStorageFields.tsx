@@ -67,7 +67,7 @@ export const FileStorageFields = ({
       value={selectedFileStorage}
       options={[
         { value: "Local", label: "Project Filesystem" },
-        { value: "AWS", label: "AWS S3" },
+      //  { value: "AWS", label: "AWS S3" },
       ]}
       disabled={!enableModification}
     />
