@@ -82,6 +82,12 @@ class BaseTextIndexer:
         file_extension = os.path.splitext(file_path)[1]
         reader_cls: Optional[Type[BaseReader]] = None
         if settings.advanced_pdf_parsing and DOCLING_READERS.get(file_extension):
+            logger.info(
+                "Enhanced PDF parsing enabled for %s (%s): using %s; ",
+                file_path.name,
+                file_extension,
+                DoclingReader.__name__,
+            )
             try:
                 reader_cls = DoclingReader
             except Exception as e:
@@ -92,6 +98,12 @@ class BaseTextIndexer:
                 reader_cls = READERS.get(file_extension)
         else:
             reader_cls = READERS.get(file_extension)
+            logger.info(
+                "No OCR - regular text extraction for %s (%s): using %s",
+                file_path.name,
+                file_extension,
+                reader_cls.__name__ if reader_cls else None,
+            )
         if not reader_cls:
             raise NotSupportedFileExtensionError(file_extension)
 

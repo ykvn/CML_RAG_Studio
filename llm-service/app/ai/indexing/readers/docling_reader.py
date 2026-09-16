@@ -252,7 +252,9 @@ class DoclingReader(BaseReader):
             settings.enhanced_pdf_engine == "qwen"
             and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
         ):
+            logger.info("OCR engine for %s: Qwen (Qwen3.8-27B-ocr)", file_path.name)
             return self._load_chunks_qwen(file_path)
+        logger.info("OCR engine for %s: Docling (EasyOCR)", file_path.name)
         return self._load_chunks_docling(file_path)
 
     def _load_chunks_qwen(self, file_path: Path) -> ChunksResult:
