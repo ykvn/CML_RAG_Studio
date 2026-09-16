@@ -51,10 +51,4 @@ export const sellingPointsText = [
     altText: "database",
     image: Images.DB,
   },
-  {
-    title: "Grows with You",
-    body: "Access advanced RAG techniques and agents (coming soon).",
-    altText: "upload",
-    image: Images.AiAssistant,
-  },
 ];
