@@ -37,7 +37,7 @@
  ******************************************************************************/
 
 import { ProjectConfig } from "src/api/ampMetadataApi.ts";
-import { Flex, Form, Switch, Typography } from "antd";
+import { Flex, Form, Segmented, Switch, Typography } from "antd";
 import { cdlWhite } from "src/cuix/variables.ts";
 
 export const ProcessingFields = ({
@@ -48,6 +48,9 @@ export const ProcessingFields = ({
   const sufficientResources = Boolean(
     projectConfig && projectConfig.application_config.memory_size_gb >= 16,
   );
+  const enhancedEnabled =
+    Form.useWatch("use_enhanced_pdf_processing") ??
+    projectConfig?.use_enhanced_pdf_processing;
   return (
     <Flex vertical style={{ maxWidth: 600 }}>
       <Form.Item
@@ -102,6 +105,25 @@ export const ProcessingFields = ({
           disabled={
             !sufficientResources && !projectConfig?.use_enhanced_pdf_processing
           }
+        />
+      </Form.Item>
+      <Form.Item
+        label="Enhanced PDF OCR Engine"
+        name={["enhanced_pdf_engine"]}
+        initialValue={projectConfig?.enhanced_pdf_engine ?? "docling"}
+        tooltip={
+          "Choose the OCR engine used for Enhanced PDF processing. " +
+          '"Docling" uses the local EasyOCR engine; "Qwen" uses the ' +
+          "Qwen3.8-27B-ocr multimodal API (requires OPENAI_API_BASE and " +
+          "OPENAI_API_KEY to be configured)."
+        }
+      >
+        <Segmented
+          disabled={!enhancedEnabled}
+          options={[
+            { label: "Docling (EasyOCR)", value: "docling" },
+            { label: "Qwen (Qwen3.8-27B-ocr)", value: "qwen" },
+          ]}
         />
       </Form.Item>
     </Flex>

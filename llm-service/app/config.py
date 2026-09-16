@@ -68,6 +68,11 @@ class ModelSource(str, Enum):
     CAII = "CAII"
 
 
+class EnhancedPdfEngine(str, Enum):
+    DOCLING = "docling"
+    QWEN = "qwen"
+
+
 class _Settings:
     """RAG configuration."""
 
@@ -140,6 +145,20 @@ class _Settings:
     @property
     def advanced_pdf_parsing(self) -> bool:
         return os.environ.get("USE_ENHANCED_PDF_PROCESSING", "false").lower() == "true"
+
+    @property
+    def enhanced_pdf_engine(self) -> str:
+        """OCR engine used when enhanced PDF processing is enabled ('docling' or 'qwen')."""
+        value = os.environ.get("ENHANCED_PDF_ENGINE", "docling").lower()
+        if value not in (
+            EnhancedPdfEngine.DOCLING.value,
+            EnhancedPdfEngine.QWEN.value,
+        ):
+            logger.warning(
+                'Invalid ENHANCED_PDF_ENGINE "%s", falling back to "docling"', value
+            )
+            return EnhancedPdfEngine.DOCLING.value
+        return value
 
     @property
     def vector_db_provider(self) -> Optional[str]:

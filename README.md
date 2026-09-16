@@ -151,7 +151,12 @@ Notes:
 
 ### Enhanced Parsing Options:
 
-RAG Studio can optionally enable enhanced parsing by providing the `USE_ENHANCED_PDF_PROCESSING` environment variable. Enabling this will allow RAG Studio to parse images and tables from PDFs. When enabling this feature, we strongly recommend using this with a GPU and at least 16GB of memory.
+RAG Studio can optionally enable enhanced parsing by providing the `USE_ENHANCED_PDF_PROCESSING` environment variable (or toggling it in the **Processing Settings** UI). Enabling this will allow RAG Studio to parse images and tables from PDFs. When enabling this feature, we strongly recommend using this with a GPU and at least 16GB of memory.
+
+The enhanced parsing **OCR engine** is selected with the `ENHANCED_PDF_ENGINE` environment variable (or the "Enhanced PDF OCR Engine" toggle in the Processing Settings UI):
+
+- `docling` (default) - uses Docling with the local **EasyOCR** engine to recover text embedded in images.
+- `qwen` - renders each page to an image and uses the **Qwen3.8-27B-ocr** multimodal model to extract the text. This requires `OPENAI_API_BASE` and `OPENAI_API_KEY` to be configured (the same credentials used for the OpenAI-compatible model provider), and that the `Qwen3.8-27B-ocr` model is available on the gateway.
 
 Enhanced parsing also applies to PowerPoint files (`.pptx` and `.pptm`): slides are rendered and OCR'd so that text embedded in slide images is indexed. This requires **LibreOffice** on `PATH` in the environment where the `llm-service` runs (the `soffice.bin` binary is preferred, falling back to `soffice`/`libreoffice`). LibreOffice is invoked with `SAL_USE_VCLPLUGIN=headless` to bypass the X11-dependent `oosplash` launcher, so it works in headless CDSW sessions. If LibreOffice is not available, PowerPoint uploads via enhanced parsing fail with a clear error message (PowerPoint files with enhanced parsing **off** continue to use the built-in text-only reader).
 

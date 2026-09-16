@@ -56,6 +56,8 @@ from transformers import AutoTokenizer
 
 from .base_reader import BaseReader, ChunksResult
 from .pdf import MarkdownSerializerProvider
+from .qwen_ocr import ocr_pdf
+from ....config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +245,68 @@ class DoclingReader(BaseReader):
         return pdf_path, temp_dir
 
     def load_chunks(self, file_path: Path) -> ChunksResult:
+        # The Qwen engine rasterizes pages and asks an external multimodal model to
+        # extract the text. It is only applicable to raster-able inputs (PDF / slides).
+        # HTML keeps using the Docling engine regardless.
+        if (
+            settings.enhanced_pdf_engine == "qwen"
+            and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
+        ):
+            return self._load_chunks_qwen(file_path)
+        return self._load_chunks_docling(file_path)
+
+    def _load_chunks_qwen(self, file_path: Path) -> ChunksResult:
+        document = Document()
+        document.id_ = self.document_id
+        self._add_document_metadata(document, file_path)
+        parent = document.as_related_node_info()
+
+        # PPTX/PPTM slides need to be rendered to PDF (via LibreOffice) so that the
+        # Qwen OCR model can see the slide content.
+        is_slides = file_path.suffix.lower() in {".pptx", ".pptm"}
+        doc_path = file_path
+        temp_dir: Optional[Path] = None
+        if is_slides:
+            doc_path, temp_dir = self._convert_pptx_to_pdf(file_path)
+
+        try:
+            # Page OCR via the Qwen3.8-27B-ocr multimodal model.
+            pages = ocr_pdf(doc_path)
+        finally:
+            if temp_dir is not None:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+        converted_chunks: List[TextNode] = []
+        chunk_number = 0
+
+        for page_number, page_text in pages:
+            normalized_text = clean_ocr_kerning(page_text)
+            if not normalized_text.strip():
+                logger.warning(f"Skipping empty OCR page {page_number}")
+                continue
+
+            page_document = Document(text=normalized_text)
+            page_document.id_ = self.document_id
+            self._add_document_metadata(page_document, file_path)
+
+            for i, node in enumerate(
+                self.splitter.get_nodes_from_documents([page_document])
+            ):
+                assert isinstance(node, TextNode)
+                node.metadata["page_number"] = page_number
+                node.metadata["file_name"] = document.metadata["file_name"]
+                node.metadata["document_id"] = document.metadata["document_id"]
+                node.metadata["data_source_id"] = document.metadata["data_source_id"]
+                node.metadata["chunk_number"] = chunk_number
+                node.metadata["chunk_format"] = "markdown"
+                node.relationships.update({NodeRelationship.SOURCE: parent})
+
+                chunk_number += 1
+                converted_chunks.append(node)
+
+        return ChunksResult(converted_chunks)
+
+    def _load_chunks_docling(self, file_path: Path) -> ChunksResult:
         document = Document()
         document.id_ = self.document_id
         self._add_document_metadata(document, file_path)

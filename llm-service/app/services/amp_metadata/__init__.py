@@ -41,7 +41,7 @@ import os
 import re
 import socket
 import subprocess
-from typing import Optional, Protocol
+from typing import Literal, Optional, Protocol
 
 from pydantic import BaseModel, TypeAdapter
 
@@ -172,6 +172,7 @@ class ProjectConfig(BaseModel):
     """
 
     use_enhanced_pdf_processing: Optional[bool] = False
+    enhanced_pdf_engine: Literal["docling", "qwen"] = "docling"
     summary_storage_provider: SummaryStorageProviderType
     chat_store_provider: ChatStoreProviderType
     vector_db_provider: VectorDbProviderType
@@ -364,6 +365,7 @@ def config_to_env(config: ProjectConfig) -> dict[str, str]:
             "USE_ENHANCED_PDF_PROCESSING": str(
                 config.use_enhanced_pdf_processing
             ).lower(),
+            "ENHANCED_PDF_ENGINE": config.enhanced_pdf_engine,
             "SUMMARY_STORAGE_PROVIDER": config.summary_storage_provider or "Local",
             "CHAT_STORE_PROVIDER": config.chat_store_provider or "Local",
             "VECTOR_DB_PROVIDER": config.vector_db_provider or "QDRANT",
@@ -474,6 +476,11 @@ def build_configuration(
     return ProjectConfigPlus(
         use_enhanced_pdf_processing=TypeAdapter(bool).validate_python(
             env.get("USE_ENHANCED_PDF_PROCESSING", False),
+        ),
+        enhanced_pdf_engine=(
+            env.get("ENHANCED_PDF_ENGINE", "docling")
+            if env.get("ENHANCED_PDF_ENGINE", "docling") in {"docling", "qwen"}
+            else "docling"
         ),
         summary_storage_provider=TypeAdapter(
             SummaryStorageProviderType

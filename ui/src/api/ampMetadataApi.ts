@@ -196,6 +196,7 @@ export interface ConfigValidationResults {
 
 export interface ProjectConfig {
   use_enhanced_pdf_processing: boolean;
+  enhanced_pdf_engine: "docling" | "qwen";
   summary_storage_provider: "Local" | "S3";
   chat_store_provider: "Local" | "S3";
   metadata_db_provider: MetadataDBProvider;

@@ -9,6 +9,7 @@ from llama_index.core.node_parser import SentenceSplitter
 
 from app.ai.indexing.base import BaseTextIndexer
 from app.ai.indexing.readers import docling_reader as dr
+from app.ai.indexing.readers.base_reader import ChunksResult
 from app.ai.indexing.readers.docling_reader import DoclingReader
 from app.ai.indexing.readers.pdf import PDFReader
 from app.ai.indexing.readers.pptx import PptxReader
@@ -207,3 +208,107 @@ def test_load_chunks_passes_pdf_through_directly(
     assert convert_called == []
     assert converted_paths == [pdf]
     assert len(result.chunks) == 1
+
+
+# --- Qwen OCR engine (load_chunks with ENHANCED_PDF_ENGINE=qwen) ----------
+
+
+def test_load_chunks_qwen_uses_ocr_for_pdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: [(1, "First page text."), (2, "Second page text.")],
+    )
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"fake")
+
+    result = make_reader().load_chunks(pdf)
+
+    assert result.chunks
+    assert sorted(c.metadata["page_number"] for c in result.chunks) == [1, 2]
+    assert all(c.metadata["file_name"] == "doc.pdf" for c in result.chunks)
+    assert all(c.metadata["document_id"] == "doc-1" for c in result.chunks)
+
+
+def test_load_chunks_qwen_converts_pptx_before_ocr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+
+    rendered_pdf = Path("/tmp/fake_rendered_for_qwen.pdf")
+    temp_dir = Path("/tmp/fake_tmp_qwen")
+    monkeypatch.setattr(
+        DoclingReader,
+        "_convert_pptx_to_pdf",
+        staticmethod(lambda fp: (rendered_pdf, temp_dir)),
+    )
+
+    ocr_calls: list[Path] = []
+
+    def fake_ocr(pdf_path: Path) -> list[tuple[int, str]]:
+        ocr_calls.append(Path(pdf_path))
+        return [(1, "slide text")]
+
+    monkeypatch.setattr(dr, "ocr_pdf", fake_ocr)
+
+    pptx = tmp_path / "deck.pptx"
+    pptx.write_bytes(b"fake")
+
+    result = make_reader().load_chunks(pptx)
+
+    assert ocr_calls == [rendered_pdf]
+    assert result.chunks
+    assert result.chunks[0].metadata["file_name"] == "deck.pptx"
+    assert result.chunks[0].metadata["page_number"] == 1
+
+
+def test_load_chunks_qwen_skips_empty_pages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: [(1, "   "), (2, "Real content")],
+    )
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"fake")
+
+    result = make_reader().load_chunks(pdf)
+
+    assert result.chunks
+    assert all(c.metadata["page_number"] == 2 for c in result.chunks)
+
+
+def test_load_chunks_qwen_not_used_for_html(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    ocr_called: list[Path] = []
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: (ocr_called.append(Path(pdf_path)) or [(1, "never")]),
+    )
+    docling_called: list[Path] = []
+
+    def fake_docling(fp: Path) -> ChunksResult:
+        docling_called.append(fp)
+        return ChunksResult([])
+
+    monkeypatch.setattr(DoclingReader, "_load_chunks_docling", fake_docling)
+
+    html = tmp_path / "page.html"
+    html.write_bytes(b"<html><body>hello</body></html>")
+
+    result = make_reader().load_chunks(html)
+
+    # HTML always routes to the docling engine; Qwen OCR must never run.
+    assert ocr_called == []
+    assert docling_called == [html]
+    assert result.chunks == []
