@@ -61,11 +61,11 @@ export const distanceMetricOptions = [
     value: "Cosine",
     label: "Cosine",
   },
-  {
-    value: "Manhattan",
-    label: "Manhattan",
-    disabled: true,
-  },
+  //{
+  //  value: "Manhattan",
+  //  label: "Manhattan",
+  //  disabled: true,
+  //},
 ];
 
 export const connectionsOptions = [
