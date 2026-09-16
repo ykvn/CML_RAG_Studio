@@ -79,7 +79,7 @@ const EmptyChatState = () => {
         preview={false}
       />
       <Typography.Title level={4} style={{ fontWeight: 300, margin: 0 }}>
-        Welcome to Document Intelligence
+        Welcome to BNI Document Intelligence
       </Typography.Title>
       <SuggestedQuestionsCards />
       <NoDataSourcesState />
