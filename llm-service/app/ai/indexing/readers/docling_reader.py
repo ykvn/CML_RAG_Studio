@@ -300,7 +300,7 @@ class DoclingReader(BaseReader):
                 node.metadata["document_id"] = document.metadata["document_id"]
                 node.metadata["data_source_id"] = document.metadata["data_source_id"]
                 node.metadata["chunk_number"] = chunk_number
-                node.metadata["chunk_format"] = "markdown"
+                node.metadata["chunk_format"] = "text"
                 node.relationships.update({NodeRelationship.SOURCE: parent})
 
                 chunk_number += 1
