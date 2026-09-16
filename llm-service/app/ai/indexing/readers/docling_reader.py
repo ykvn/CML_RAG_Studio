@@ -276,8 +276,9 @@ class DoclingReader(BaseReader):
             logger.debug(f"Processing {doc_path.suffix} with Docling: {doc_path=}")
             docling_doc: ConversionResult = converter.convert(doc_path)
         finally:
-            if temp_dir is not None:
-                shutil.rmtree(temp_dir, ignore_errors=True)
+            #if temp_dir is not None:
+            #    shutil.rmtree(temp_dir, ignore_errors=True)
+            pass
 
         # 2. Chart Extraction: Recover numerical text locked inside Picture / Bar Chart items
         for item, _ in docling_doc.document.iterate_items():
