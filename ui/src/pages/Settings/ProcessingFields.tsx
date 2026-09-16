@@ -49,7 +49,7 @@ export const ProcessingFields = ({
     projectConfig && projectConfig.application_config.memory_size_gb >= 16,
   );
   const enhancedEnabled =
-    Form.useWatch("use_enhanced_pdf_processing") ??
+    Form.useWatch<boolean | undefined>("use_enhanced_pdf_processing") ??
     projectConfig?.use_enhanced_pdf_processing;
   return (
     <Flex vertical style={{ maxWidth: 600 }}>
