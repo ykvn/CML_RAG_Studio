@@ -171,6 +171,11 @@ class OpenAiModelProvider(_ModelProvider):
                 name="Qwen3.8-27B-xhigh",
                 tool_calling_supported=True,
             ),
+            ModelResponse(
+                model_id="Qwen3.8-27B-ocr",
+                name="Qwen3.8-27B-ocr",
+                tool_calling_supported=True,
+            ),
         ]
 
     @staticmethod
