@@ -277,15 +277,14 @@ class DoclingReader(BaseReader):
             docling_doc: ConversionResult = converter.convert(doc_path)
             
             # --- ADD THIS BLOCK FOR DEBUGGING ---
-            if is_slides and doc_path.exists():
-                debug_path = Path("/home/cdsw") / doc_path.name
-                shutil.copy2(doc_path, debug_path)
-                logger.info(f"*** DEBUG: Copied PDF for inspection to: {debug_path} ***")
+            #if is_slides and doc_path.exists():
+            #    debug_path = Path("/home/cdsw") / doc_path.name
+            #    shutil.copy2(doc_path, debug_path)
+            #    logger.info(f"*** DEBUG: Copied PDF for inspection to: {debug_path} ***")
             # ------------------------------------
             
         finally:
             if temp_dir is not None:
-                # You can leave this uncommented now because we copied the PDF safely above
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
         # 2. Chart Extraction: Recover numerical text locked inside Picture / Bar Chart items
