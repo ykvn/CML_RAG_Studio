@@ -80,6 +80,33 @@ def _candidate_exists(path: Optional[Path]) -> bool:
     return bool(path) and path.is_file() and os.access(path, os.X_OK)
 
 
+def _writable_profile_dir() -> Path:
+    """Create a writable LibreOffice profile location.
+
+    Prefers the OS default temp dir, but many hardened CML/CDSW runtimes mount
+    ``/tmp`` with ``noexec``, which makes LibreOffice fail at startup (exit code
+    81, empty stderr) because it cannot execute helpers it extracts into the
+    profile. In that case we fall back to a writable subdir under the user's
+    home so headless conversion works.
+    """
+    try:
+        tmp = Path(tempfile.mkdtemp(prefix="lo_profile_"))
+        probe = tmp / "probe.sh"
+        probe.write_text("#!/bin/sh\nexit 0\n")
+        probe.chmod(0o700)
+        subprocess.run(
+            [str(probe)], capture_output=True, timeout=10, check=False
+        )
+        shutil.rmtree(tmp, ignore_errors=True)
+        return tmp.parent  # /tmp is executable
+    except Exception:
+        # /tmp is not executable-usable -> use a home-directory subdir.
+        home = Path(os.environ.get("HOME", str(Path.home())))
+        profile_base = home / ".libreoffice_rag_profile"
+        profile_base.mkdir(parents=True, exist_ok=True)
+        return profile_base
+
+
 def _find_soffice() -> Optional[str]:
     """Locate a LibreOffice binary, preferring the real ``soffice.bin`` engine.
 
@@ -140,9 +167,12 @@ class DoclingReader(BaseReader):
             )
 
         temp_dir = Path(tempfile.mkdtemp(prefix="docling_pptx_"))
-        # Isolated LibreOffice user profile avoids profile locks and prevents
-        # LibreOffice from writing over the CDSW user's real HOME directory.
-        profile_dir = temp_dir / "lo_profile"
+        # Use a profile location on an executable filesystem (e.g. some CDSW
+        # runtimes mount /tmp as noexec, which makes LibreOffice exit with code
+        # 81 during startup). Also isolate the profile to avoid lock conflicts
+        # and to keep LibreOffice from writing over the user's real HOME.
+        profile_dir = _writable_profile_dir() / f"lo_profile_{os.getpid()}"
+        profile_dir.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
         env["SAL_USE_VCLPLUGIN"] = "headless"
         env["HOME"] = str(temp_dir)
@@ -157,6 +187,7 @@ class DoclingReader(BaseReader):
                     + str(profile_dir).replace(" ", "%20"),
                     "--headless",
                     "--norestore",
+                    "--nofirststartwizard",
                     "--invisible",
                     "--convert-to",
                     "pdf",
@@ -169,25 +200,38 @@ class DoclingReader(BaseReader):
                 timeout=300,
             )
         except subprocess.TimeoutExpired as exc:
+            shutil.rmtree(profile_dir, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
             raise RuntimeError(
                 f"LibreOffice timed out converting '{file_path.name}' to PDF."
             ) from exc
 
         if result.returncode != 0:
+            # Capture both streams; LibreOffice may log to stdout on init failures.
+            detail = (result.stderr or "").strip() or (result.stdout or "").strip()
+            shutil.rmtree(profile_dir, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
-            stderr = (result.stderr or "").strip()
+            if not detail:
+                detail = (
+                    "LibreOffice exited during startup/initialisation (empty "
+                    "output). This often indicates the profile location is on a "
+                    "noexec filesystem or a stale soffice process holds a lock. "
+                    f"Command: {result.args!r}"
+                )
             raise RuntimeError(
                 f"LibreOffice failed to convert '{file_path.name}' to PDF for "
-                f"enhanced processing: {stderr or result}"
+                f"enhanced processing: {detail}"
             )
 
         pdf_path = temp_dir / f"{file_path.stem}.pdf"
         if not pdf_path.exists():
+            shutil.rmtree(profile_dir, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
             raise RuntimeError(
                 f"LibreOffice did not produce a PDF output for '{file_path.name}'."
             )
+        # Clean up the isolated profile now; keep temp_dir (it holds the PDF).
+        shutil.rmtree(profile_dir, ignore_errors=True)
         return pdf_path, temp_dir
 
     def load_chunks(self, file_path: Path) -> ChunksResult:

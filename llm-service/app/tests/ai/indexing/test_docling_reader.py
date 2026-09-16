@@ -78,6 +78,8 @@ def test_convert_pptx_to_pdf_invokes_soffice(
         "_find_soffice",
         lambda: "/home/cdsw/libreoffice_local/opt/libreoffice7.6/program/soffice.bin",
     )
+    # Pin the profile dir so the function doesn't probe /tmp or touch real $HOME.
+    monkeypatch.setattr(dr, "_writable_profile_dir", lambda: tmp_path)
 
     pptx = tmp_path / "slides.pptx"
     pptx.write_bytes(b"fake")
