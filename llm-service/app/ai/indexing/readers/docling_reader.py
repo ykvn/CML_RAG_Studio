@@ -147,17 +147,6 @@ class DoclingReader(BaseReader):
 
     @staticmethod
     def _convert_pptx_to_pdf(file_path: Path) -> tuple[Path, Path]:
-        """Render a PPTX/PPTM file to PDF via LibreOffice for Docling OCR.
-
-        Prefers the ``soffice.bin`` binary and forces the ``headless`` VCL
-        plugin (``SAL_USE_VCLPLUGIN=headless``). This bypasses the ``oosplash``
-        launcher, which otherwise loads X11 libraries (e.g. ``libXinerama``) that
-        are absent in a headless CDSW session, and therefore fail with
-        ``error while loading shared libraries``.
-
-        Returns a ``(pdf_path, temp_dir)`` tuple. The caller is responsible for
-        removing ``temp_dir`` (which contains ``pdf_path``) once processing completes.
-        """
         soffice = _find_soffice()
         if not soffice:
             raise RuntimeError(
@@ -167,38 +156,58 @@ class DoclingReader(BaseReader):
             )
 
         temp_dir = Path(tempfile.mkdtemp(prefix="docling_pptx_"))
-        # Use a profile location on an executable filesystem (e.g. some CDSW
-        # runtimes mount /tmp as noexec, which makes LibreOffice exit with code
-        # 81 during startup). Also isolate the profile to avoid lock conflicts
-        # and to keep LibreOffice from writing over the user's real HOME.
+        
+        # Use a profile location on an executable filesystem
         profile_dir = _writable_profile_dir() / f"lo_profile_{os.getpid()}"
         profile_dir.mkdir(parents=True, exist_ok=True)
+        
         env = os.environ.copy()
         env["SAL_USE_VCLPLUGIN"] = "headless"
         env["HOME"] = str(temp_dir)
         env["USERPROFILE"] = str(temp_dir)
         env["LO_USERPROFILE"] = str(profile_dir)
 
+        # Inject the libreoffice program directory into LD_LIBRARY_PATH 
+        soffice_dir = str(Path(soffice).parent)
+        existing_ld = env.get("LD_LIBRARY_PATH", "")
+        env["LD_LIBRARY_PATH"] = f"{soffice_dir}:{existing_ld}".strip(":")
+
+        cmd = [
+            soffice,
+            "-env:UserInstallation=file://"
+            + str(profile_dir).replace(" ", "%20"),
+            "--headless",
+            "--norestore",
+            "--nofirststartwizard",
+            "--invisible",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(temp_dir),
+            str(file_path),
+        ]
+
         try:
+            # FIX: explicitly pass env=env
             result = subprocess.run(
-                [
-                    soffice,
-                    "-env:UserInstallation=file://"
-                    + str(profile_dir).replace(" ", "%20"),
-                    "--headless",
-                    "--norestore",
-                    "--nofirststartwizard",
-                    "--invisible",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(temp_dir),
-                    str(file_path),
-                ],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=300,
+                env=env,
             )
+            
+            # Catch exit code 81 (profile creation) and retry once automatically
+            if result.returncode == 81:
+                logger.info("LibreOffice returned code 81 (profile created). Retrying conversion...")
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    env=env,
+                )
+                
         except subprocess.TimeoutExpired as exc:
             shutil.rmtree(profile_dir, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -207,7 +216,6 @@ class DoclingReader(BaseReader):
             ) from exc
 
         if result.returncode != 0:
-            # Capture both streams; LibreOffice may log to stdout on init failures.
             detail = (result.stderr or "").strip() or (result.stdout or "").strip()
             shutil.rmtree(profile_dir, ignore_errors=True)
             shutil.rmtree(temp_dir, ignore_errors=True)
@@ -230,7 +238,7 @@ class DoclingReader(BaseReader):
             raise RuntimeError(
                 f"LibreOffice did not produce a PDF output for '{file_path.name}'."
             )
-        # Clean up the isolated profile now; keep temp_dir (it holds the PDF).
+            
         shutil.rmtree(profile_dir, ignore_errors=True)
         return pdf_path, temp_dir
 
