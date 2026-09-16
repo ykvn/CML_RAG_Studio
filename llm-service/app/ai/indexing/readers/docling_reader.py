@@ -287,7 +287,7 @@ class DoclingReader(BaseReader):
         chunker = HybridChunker(
             serializer_provider=MarkdownSerializerProvider(),
             tokenizer=tokenizer,
-            max_tokens=4096,
+            max_tokens=2048,
             merge_peers=True,
         )
         chunky_chunks = chunker.chunk(docling_doc.document)
