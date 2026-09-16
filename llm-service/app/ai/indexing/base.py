@@ -45,6 +45,8 @@ READERS: Dict[str, Type[BaseReader]] = {
 DOCLING_READERS: Dict[str, Type[BaseReader]] = {
     ".pdf": DoclingReader,
     ".html": DoclingReader,
+    ".pptx": DoclingReader,
+    ".pptm": DoclingReader,
 }
 
 

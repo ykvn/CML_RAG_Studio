@@ -37,9 +37,13 @@
 #
 
 import logging
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.document import ConversionResult, PictureItem
@@ -71,9 +75,120 @@ def clean_ocr_kerning(text: str) -> str:
     return cleaned
 
 
+def _candidate_exists(path: Optional[Path]) -> bool:
+    """Return True if ``path`` is an existing, executable file."""
+    return bool(path) and path.is_file() and os.access(path, os.X_OK)
+
+
+def _find_soffice() -> Optional[str]:
+    """Locate a LibreOffice binary, preferring the real ``soffice.bin`` engine.
+
+    The main ``soffice``/``soffice`` wrapper launches ``oosplash``, which loads
+    X11 libraries (e.g. ``libXinerama``) unavailable in headless CDSW sessions,
+    so we strongly prefer ``soffice.bin`` when present.
+
+    Search order:
+      1. Explicit CDSW locations (independent of PATH/launcher environment).
+      2. The process ``PATH`` (``soffice.bin`` then ``soffice`` then ``libreoffice``).
+    """
+    # Well-known extracted-LibreOffice installs under the CDSW user home.
+    libreoffice_local = Path("/home/cdsw/libreoffice_local")
+    known_dirs = [libreoffice_local / "opt"]
+    known_dirs.extend(sorted(p for p in libreoffice_local.glob("*/opt")))
+    # Include a flat layout and any `.../program` dirs for robustness.
+    globs: list[Path] = []
+    for base in known_dirs:
+        globs.extend(base.glob("*/program/soffice.bin"))
+        globs.extend(base.glob("*/*/program/soffice.bin"))
+
+    for candidate in sorted(set(globs), key=str):
+        if _candidate_exists(candidate):
+            return str(candidate)
+
+    # Standard PATH search, again preferring the real binary, then wrappers.
+    for name in ("soffice.bin", "soffice", "libreoffice"):
+        found = shutil.which(name)
+        if found:
+            return found
+
+    return None
+
+
 class DoclingReader(BaseReader):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _convert_pptx_to_pdf(file_path: Path) -> tuple[Path, Path]:
+        """Render a PPTX/PPTM file to PDF via LibreOffice for Docling OCR.
+
+        Prefers the ``soffice.bin`` binary and forces the ``headless`` VCL
+        plugin (``SAL_USE_VCLPLUGIN=headless``). This bypasses the ``oosplash``
+        launcher, which otherwise loads X11 libraries (e.g. ``libXinerama``) that
+        are absent in a headless CDSW session, and therefore fail with
+        ``error while loading shared libraries``.
+
+        Returns a ``(pdf_path, temp_dir)`` tuple. The caller is responsible for
+        removing ``temp_dir`` (which contains ``pdf_path``) once processing completes.
+        """
+        soffice = _find_soffice()
+        if not soffice:
+            raise RuntimeError(
+                "LibreOffice ('soffice') is required to OCR PowerPoint (.pptx/.pptm) "
+                "files. Install LibreOffice and ensure 'soffice.bin'/'soffice' is on "
+                "PATH (e.g. `apt-get install libreoffice-impress`)."
+            )
+
+        temp_dir = Path(tempfile.mkdtemp(prefix="docling_pptx_"))
+        # Isolated LibreOffice user profile avoids profile locks and prevents
+        # LibreOffice from writing over the CDSW user's real HOME directory.
+        profile_dir = temp_dir / "lo_profile"
+        env = os.environ.copy()
+        env["SAL_USE_VCLPLUGIN"] = "headless"
+        env["HOME"] = str(temp_dir)
+        env["USERPROFILE"] = str(temp_dir)
+        env["LO_USERPROFILE"] = str(profile_dir)
+
+        try:
+            result = subprocess.run(
+                [
+                    soffice,
+                    "-env:UserInstallation=file://"
+                    + str(profile_dir).replace(" ", "%20"),
+                    "--headless",
+                    "--norestore",
+                    "--invisible",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    str(temp_dir),
+                    str(file_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+        except subprocess.TimeoutExpired as exc:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise RuntimeError(
+                f"LibreOffice timed out converting '{file_path.name}' to PDF."
+            ) from exc
+
+        if result.returncode != 0:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            stderr = (result.stderr or "").strip()
+            raise RuntimeError(
+                f"LibreOffice failed to convert '{file_path.name}' to PDF for "
+                f"enhanced processing: {stderr or result}"
+            )
+
+        pdf_path = temp_dir / f"{file_path.stem}.pdf"
+        if not pdf_path.exists():
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise RuntimeError(
+                f"LibreOffice did not produce a PDF output for '{file_path.name}'."
+            )
+        return pdf_path, temp_dir
 
     def load_chunks(self, file_path: Path) -> ChunksResult:
         document = Document()
@@ -81,23 +196,36 @@ class DoclingReader(BaseReader):
         self._add_document_metadata(document, file_path)
         parent = document.as_related_node_info()
 
-        # 1. Offline Pipeline Options: Point to local model artifacts & upscale image scale
-        pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = True
-        pipeline_options.do_table_structure = True
-        pipeline_options.images_scale = 3.0  # High-definition 3x scale to prevent OCR blurring
-        pipeline_options.artifacts_path = DOCLING_ARTIFACTS_PATH  # Offline model directory
-        pipeline_options.ocr_options = EasyOcrOptions()
+        # PPTX/PPTM slides need to be rendered to PDF (via LibreOffice) so that the
+        # Docling OCR pipeline can see text embedded in slide images. Native PDFs are
+        # processed directly.
+        is_slides = file_path.suffix.lower() in {".pptx", ".pptm"}
+        doc_path = file_path
+        temp_dir: Optional[Path] = None
+        if is_slides:
+            doc_path, temp_dir = self._convert_pptx_to_pdf(file_path)
 
-        converter = DocumentConverter(
-            allowed_formats=[InputFormat.PDF],
-            format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-            },
-        )
+        try:
+            # 1. Offline Pipeline Options: Point to local model artifacts & upscale image scale
+            pipeline_options = PdfPipelineOptions()
+            pipeline_options.do_ocr = True
+            pipeline_options.do_table_structure = True
+            pipeline_options.images_scale = 3.0  # High-definition 3x scale to prevent OCR blurring
+            pipeline_options.artifacts_path = DOCLING_ARTIFACTS_PATH  # Offline model directory
+            pipeline_options.ocr_options = EasyOcrOptions()
 
-        logger.debug(f"Processing PDF with Docling: {file_path=}")
-        docling_doc: ConversionResult = converter.convert(file_path)
+            converter = DocumentConverter(
+                allowed_formats=[InputFormat.PDF],
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                },
+            )
+
+            logger.debug(f"Processing {doc_path.suffix} with Docling: {doc_path=}")
+            docling_doc: ConversionResult = converter.convert(doc_path)
+        finally:
+            if temp_dir is not None:
+                shutil.rmtree(temp_dir, ignore_errors=True)
 
         # 2. Chart Extraction: Recover numerical text locked inside Picture / Bar Chart items
         for item, _ in docling_doc.document.iterate_items():
