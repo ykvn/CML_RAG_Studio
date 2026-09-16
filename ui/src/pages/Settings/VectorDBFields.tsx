@@ -194,7 +194,7 @@ export const VectorDBFields = ({
       tooltip="Optional API key, required if your Qdrant server uses authentication."
       hidden={selectedVectorDBProvider !== "EXTERNAL_QDRANT"}
     >
-      <Input placeholder="api-key" />
+      <Input placeholder="api-key" type="password" />
     </Form.Item>
   </Flex>
 );
