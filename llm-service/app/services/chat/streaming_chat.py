@@ -49,7 +49,7 @@ from app.ai.vector_stores.vector_store_factory import VectorStoreFactory
 from app.rag_types import RagPredictConfiguration
 from app.services import llm_completion, models
 from app.services.chat.chat import finalize_response
-from app.services.chat.utils import retrieve_chat_history
+from app.services.chat.utils import retrieve_chat_history, strip_followups
 from app.services.chat_history.chat_history_manager import (
     RagStudioChatMessage,
     RagMessage,
@@ -223,22 +223,7 @@ def _stream_direct_llm_chat(
         evaluations=[],
         rag_message=RagMessage(
             user=query,
-            assistant=response.message.content or "",
-        ),
-        timestamp=time.time(),
-        condensed_question=None,
-    )
-    get_chat_history_manager().append_to_history(session.id, [new_chat_message])
-
-    new_chat_message = RagStudioChatMessage(
-        id=response_id,
-        session_id=session.id,
-        source_nodes=[],
-        inference_model=session.inference_model,
-        evaluations=[],
-        rag_message=RagMessage(
-            user=query,
-            assistant=response.message.content or "",
+            assistant=strip_followups(response.message.content),
         ),
         timestamp=time.time(),
         condensed_question=None,

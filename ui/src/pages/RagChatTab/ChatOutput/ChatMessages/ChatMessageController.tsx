@@ -53,7 +53,7 @@ import {
 } from "src/api/chatApi.ts";
 import { useRenameNameMutation } from "src/api/sessionApi.ts";
 import EmptyChatState from "pages/RagChatTab/ChatOutput/ChatMessages/EmptyChatState.tsx";
-import { useStreamingChunkBuffer } from "src/hooks/useStreamingChunkBuffer.ts";
+import { useFollowupsStreamParser } from "src/hooks/useFollowupsStreamParser.ts";
 
 const ChatMessageController = () => {
   const {
@@ -82,46 +82,11 @@ const ChatMessageController = () => {
     },
   });
 
-  // Track if we are currently parsing the <followups> tag
-  const isBufferingFollowups = useRef(false);
-  const followupsBuffer = useRef("");
-
-  // Use custom hook to handle batched streaming updates
-  const { onChunk, flush } = useStreamingChunkBuffer((chunks) => {
-    // Check if the tag is starting
-    if (chunks.includes("<followups>")) {
-      isBufferingFollowups.current = true;
-      const parts = chunks.split("<followups>");
-      if (parts[0]) setStreamedChat((prev) => prev + parts[0]);
-      followupsBuffer.current += parts[1] || "";
-      return;
-    }
-
-    // Check if the tag is ending
-    if (chunks.includes("</followups>")) {
-      isBufferingFollowups.current = false;
-      const parts = chunks.split("</followups>");
-      followupsBuffer.current += parts[0] || "";
-
-      // Parse the pipe-separated string into an array and update state
-      const questions = followupsBuffer.current
-        .split("|")
-        .map((q) => q.trim())
-        .filter(Boolean);
-      setStreamedFollowups(questions);
-
-      // Reset the buffer for the next chat
-      followupsBuffer.current = "";
-      return;
-    }
-
-    // Route the chunk to the correct destination
-    if (isBufferingFollowups.current) {
-      followupsBuffer.current += chunks;
-    } else {
-      setStreamedChat((prev) => prev + chunks);
-    }
-  });
+  // Robust <followups> parsing that handles tags split across chunk boundaries
+  const { onChunk, flush, reset: resetFollowups } = useFollowupsStreamParser(
+    setStreamedChat,
+    setStreamedFollowups,
+  );
 
   const { mutate: chatMutation } = useStreamingChatMutation({
     onChunk,
@@ -130,7 +95,6 @@ const ChatMessageController = () => {
       // Flush any remaining chunks before cleanup
       flush();
       setStreamedChat("");
-      setStreamedFollowups([]);
       const url = new URL(window.location.href);
       url.searchParams.delete("question");
       window.history.pushState(null, "", url.toString());
@@ -165,13 +129,14 @@ const ChatMessageController = () => {
   useEffect(() => {
     // note: when creating a new session, we run the risk of firing this off twice without the isFetchingHistory check
     if (question && activeSessionId && !isFetchingHistory) {
+      resetFollowups();
       chatMutation({
         query: question,
         session_id: activeSessionId,
         configuration: createQueryConfiguration(excludeKnowledgeBases),
       });
     }
-  }, [question, activeSessionId, excludeKnowledgeBases, isFetchingHistory]);
+  }, [question, activeSessionId, excludeKnowledgeBases, isFetchingHistory, resetFollowups, chatMutation]);
 
   useEffect(() => {
     if (inView) {

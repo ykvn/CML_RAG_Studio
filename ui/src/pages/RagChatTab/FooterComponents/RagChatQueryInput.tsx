@@ -67,7 +67,7 @@ import {
 import { useParams } from "@tanstack/react-router";
 import { cdlBlue600, cdlRed600 } from "src/cuix/variables.ts";
 import SuggestedQuestionsFooter from "pages/RagChatTab/FooterComponents/SuggestedQuestionsFooter.tsx";
-import { useStreamingChunkBuffer } from "src/hooks/useStreamingChunkBuffer.ts";
+import { useFollowupsStreamParser } from "src/hooks/useFollowupsStreamParser.ts";
 import ToolsManagerButton from "pages/RagChatTab/FooterComponents/ToolsManager.tsx";
 import ChatSessionDocuments from "pages/RagChatTab/FooterComponents/ChatSessionDocuments.tsx";
 import { ChatSessionDragAndDrop } from "pages/RagChatTab/FooterComponents/ChatSessionDragAndDrop.tsx";
@@ -150,46 +150,11 @@ const RagChatQueryInput = ({
     },
   });
 
-  // Track whether we are currently inside a <followups>...</followups> block
-  const isBufferingFollowups = useRef(false);
-  const followupsBuffer = useRef("");
-
-  // Use custom hook to handle batched streaming updates
-  const { onChunk, flush } = useStreamingChunkBuffer((chunks) => {
-    // Check if the tag is starting
-    if (chunks.includes("<followups>")) {
-      isBufferingFollowups.current = true;
-      const parts = chunks.split("<followups>");
-      if (parts[0]) setStreamedChat((prev) => prev + parts[0]);
-      followupsBuffer.current += parts[1] || "";
-      return;
-    }
-
-    // Check if the tag is ending
-    if (chunks.includes("</followups>")) {
-      isBufferingFollowups.current = false;
-      const parts = chunks.split("</followups>");
-      followupsBuffer.current += parts[0] || "";
-
-      // Parse the pipe-separated string into an array and update state
-      const questions = followupsBuffer.current
-        .split("|")
-        .map((q) => q.trim())
-        .filter(Boolean);
-      setStreamedFollowups(questions);
-
-      // Reset the buffer for the next chat
-      followupsBuffer.current = "";
-      return;
-    }
-
-    // Route the chunk to the correct destination
-    if (isBufferingFollowups.current) {
-      followupsBuffer.current += chunks;
-    } else {
-      setStreamedChat((prev) => prev + chunks);
-    }
-  });
+  // Robust <followups> parsing that handles tags split across chunk boundaries
+  const { onChunk, flush, reset: resetFollowups } = useFollowupsStreamParser(
+    setStreamedChat,
+    setStreamedFollowups,
+  );
 
   const streamChatMutation = useStreamingChatMutation({
     onChunk,
@@ -199,7 +164,6 @@ const RagChatQueryInput = ({
       flush();
       setUserInput("");
       setStreamedChat("");
-      setStreamedFollowups([]);
     },
     getController: (ctrl) => {
       setStreamedAbortController(ctrl);
@@ -236,6 +200,7 @@ const RagChatQueryInput = ({
       return;
     }
     if (userInput.length > 0) {
+      resetFollowups();
       if (sessionId) {
         streamChatMutation.mutate({
           query: userInput,

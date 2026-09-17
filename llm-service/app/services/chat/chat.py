@@ -45,7 +45,11 @@ from llama_index.core.chat_engine.types import AgentChatResponse
 from app.ai.vector_stores.vector_store_factory import VectorStoreFactory
 from app.rag_types import RagPredictConfiguration
 from app.services import evaluators, llm_completion
-from app.services.chat.utils import retrieve_chat_history, format_source_nodes
+from app.services.chat.utils import (
+    retrieve_chat_history,
+    format_source_nodes,
+    strip_followups,
+)
 from app.services.chat_history.chat_history_manager import (
     Evaluation,
     RagMessage,
@@ -163,7 +167,7 @@ def finalize_response(
         inference_model=session.inference_model,
         rag_message=RagMessage(
             user=query,
-            assistant=chat_response.response,
+            assistant=strip_followups(chat_response.response),
         ),
         evaluations=evaluations,
         timestamp=time.time(),

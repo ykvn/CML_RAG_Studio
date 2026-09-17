@@ -36,6 +36,7 @@
 #  DATA.
 #
 
+import re
 from typing import List, Iterable
 
 from llama_index.core.base.llms.types import MessageRole
@@ -46,6 +47,19 @@ from app.services.chat_history.chat_history_manager import (
     get_chat_history_manager,
     RagPredictSourceNode,
 )
+
+FOLLOWUPS_BLOCK_PATTERN = re.compile(r"<followups>.*?</followups>", re.DOTALL)
+
+
+def strip_followups(content: str | None) -> str:
+    """Removes the <followups>...</followups> block from an assistant response
+    before it is persisted to chat history. The follow-up questions are
+    consumed by the UI from the live stream and must not be shown as part of
+    the answer text."""
+    if not content:
+        return ""
+    cleaned = FOLLOWUPS_BLOCK_PATTERN.sub("", content)
+    return cleaned.strip()
 
 
 class RagContext(BaseModel):
