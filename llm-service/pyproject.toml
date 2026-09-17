@@ -63,16 +63,12 @@ override-dependencies = [
     "botocore-stubs==1.36.1",
 ]
 
-[tool.uv.extra-build-dependencies]
-lipsum = ["setuptools<70"]
-
 [dependency-groups]
 dev = [
     "pytest>=8.3.3",
     "pytest-asyncio>=1.0.0",
     "ruff>=0.7.4",
     "mypy>=1.16.1",
-    "lipsum>=0.1.2",
     "hypothesis>=6.122.1",
     "black>=24.10.0",
     "types-boto3-s3>=1.36.1",
