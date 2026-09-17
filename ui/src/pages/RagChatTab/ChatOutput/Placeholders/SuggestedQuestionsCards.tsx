@@ -93,9 +93,45 @@ const SuggestedQuestionsCards = () => {
 
   const createSessionAndRedirect = useCreateSessionAndRedirect();
 
+  // Track whether we are currently inside a <followups>...</followups> block
+  const isBufferingFollowups = useRef(false);
+  const followupsBuffer = useRef("");
+
   // Use custom hook to handle batched streaming updates
   const { onChunk, flush } = useStreamingChunkBuffer((chunks) => {
-    setStreamedChat((prev) => prev + chunks);
+    // Check if the tag is starting
+    if (chunks.includes("<followups>")) {
+      isBufferingFollowups.current = true;
+      const parts = chunks.split("<followups>");
+      if (parts[0]) setStreamedChat((prev) => prev + parts[0]);
+      followupsBuffer.current += parts[1] || "";
+      return;
+    }
+
+    // Check if the tag is ending
+    if (chunks.includes("</followups>")) {
+      isBufferingFollowups.current = false;
+      const parts = chunks.split("</followups>");
+      followupsBuffer.current += parts[0] || "";
+
+      // Parse the pipe-separated string into an array and update state
+      const questions = followupsBuffer.current
+        .split("|")
+        .map((q) => q.trim())
+        .filter(Boolean);
+      setStreamedFollowups(questions);
+
+      // Reset the buffer for the next chat
+      followupsBuffer.current = "";
+      return;
+    }
+
+    // Route the chunk to the correct destination
+    if (isBufferingFollowups.current) {
+      followupsBuffer.current += chunks;
+    } else {
+      setStreamedChat((prev) => prev + chunks);
+    }
   });
 
   const { mutate: chatMutation, isPending: askRagIsPending } =

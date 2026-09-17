@@ -130,6 +130,7 @@ const ChatMessageController = () => {
       // Flush any remaining chunks before cleanup
       flush();
       setStreamedChat("");
+      setStreamedFollowups([]);
       const url = new URL(window.location.href);
       url.searchParams.delete("question");
       window.history.pushState(null, "", url.toString());

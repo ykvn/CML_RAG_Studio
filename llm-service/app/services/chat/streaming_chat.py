@@ -67,6 +67,25 @@ from app.services.query.querier import (
 )
 from app.services.query.query_configuration import QueryConfiguration
 
+_DIRECT_LLM_FOLLOWUP_INSTRUCTION = (
+    " At the end of your answer, you MUST include an XML tag "
+    "<followups> containing 2-3 interactive, contextual, and specific "
+    "follow-up questions related to the data or topic just explained. "
+    "Separate each question with a pipe (|) character. "
+    "Do NOT use markdown lists inside this tag. "
+    "Example: <followups>What are the trends?|How does this compare?|What is the root cause?</followups>"
+)
+
+
+_DIRECT_LLM_FOLLOWUP_INSTRUCTION = (
+    "\n\nAt the end of every answer, you MUST include an XML tag "
+    "<followups> containing 2-3 interactive, contextual, and specific "
+    "follow-up questions related to the data or topic just explained. "
+    "Separate each question with a pipe (|) character. "
+    "Do NOT use markdown lists inside this tag. "
+    "Example: <followups>What caused this?|How does it compare?|What are the trends?</followups>"
+)
+
 
 def stream_chat(
     session: Session,
@@ -182,6 +201,16 @@ def build_streamer(
     return condensed_question, streaming_chat_response
 
 
+_FOLLOWUP_INSTRUCTION = (
+    " At the end of your answer, you MUST include an XML tag "
+    "<followups> containing 2-3 interactive, contextual, and specific "
+    "follow-up questions related to the data or topic just explained. "
+    "Separate each question with a pipe character (|). "
+    "Do NOT use markdown lists inside this tag. "
+    "Format: <followups>Question 1?|Question 2?|Question 3?</followups>"
+)
+
+
 def _stream_direct_llm_chat(
     session: Session,
     response_id: str,
@@ -192,17 +221,34 @@ def _stream_direct_llm_chat(
     response: ChatResponse
     if session.query_configuration.disable_streaming:
         # Use non-streaming completion when streaming is disabled
-        response = llm_completion.completion(session.id, query, session.inference_model)
+        response = llm_completion.completion(
+            session.id, query + _FOLLOWUP_INSTRUCTION, session.inference_model
+        )
         response.additional_kwargs["response_id"] = response_id
         yield response
     else:
         chat_response = llm_completion.stream_completion(
-            session.id, query, session.inference_model
+            session.id, query + _FOLLOWUP_INSTRUCTION, session.inference_model
         )
         response = ChatResponse(message=ChatMessage(content=query))
         for response in chat_response:
             response.additional_kwargs["response_id"] = response_id
             yield response
+
+    new_chat_message = RagStudioChatMessage(
+        id=response_id,
+        session_id=session.id,
+        source_nodes=[],
+        inference_model=session.inference_model,
+        evaluations=[],
+        rag_message=RagMessage(
+            user=query,
+            assistant=response.message.content or "",
+        ),
+        timestamp=time.time(),
+        condensed_question=None,
+    )
+    get_chat_history_manager().append_to_history(session.id, [new_chat_message])
 
     new_chat_message = RagStudioChatMessage(
         id=response_id,
