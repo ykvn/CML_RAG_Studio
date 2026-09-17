@@ -81,6 +81,8 @@ function ChatLayout() {
   const [streamedEvent, setStreamedEvent] = useState<ChatEvent[]>([]);
   const [streamedAbortController, setStreamedAbortController] =
     useState<AbortController>();
+  // ADDED: Initialize the followups state here
+  const [streamedFollowups, setStreamedFollowups] = useState<string[]>([]);
   const {
     status: chatHistoryStatus,
     data: chatHistory,
@@ -122,6 +124,8 @@ function ChatLayout() {
           streamedAbortController,
           setStreamedAbortController,
         ],
+        // ADDED: Pass the new state into the context provider
+        streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
         dataSourceSize,
         dataSourcesQuery: {
           dataSources: dataSources ?? [],

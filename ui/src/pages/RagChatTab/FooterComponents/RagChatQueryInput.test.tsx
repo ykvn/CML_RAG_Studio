@@ -226,6 +226,8 @@ const createMockContext = (
   streamedChatState: ["", vi.fn()],
   streamedEventState: [[], vi.fn()],
   streamedAbortControllerState: [undefined, vi.fn()],
+  // ADDED: The missing property on the mock
+  streamedFollowupsState: [[], vi.fn()], 
   dataSourcesQuery: {
     dataSources: [],
     dataSourcesStatus: "success",
