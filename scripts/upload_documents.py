@@ -46,10 +46,14 @@ import getpass
 import mimetypes
 import os
 import re
+import shlex
 import sys
 import time
 import urllib.parse
 import httpx
+
+if os.environ.get("JOB_ARGUMENTS"):
+    sys.argv = [sys.argv[0]] + shlex.split(os.environ["JOB_ARGUMENTS"])
 
 AUTH_URL = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v1/auth"
 DOWNLOAD_URL_TEMPLATE = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v2/nodes/{node_id}/versions/{version_number}/content"
