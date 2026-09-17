@@ -209,6 +209,8 @@ const createMockContext = (
   streamedChatState: ["", vi.fn()],
   streamedEventState: [[], vi.fn()],
   streamedAbortControllerState: [undefined, vi.fn()],
+  // ADDED: The missing mocked state to fix the destructuring error
+  streamedFollowupsState: [[], vi.fn()], 
   dataSourcesQuery: {
     dataSources: [],
     dataSourcesStatus: "success",
