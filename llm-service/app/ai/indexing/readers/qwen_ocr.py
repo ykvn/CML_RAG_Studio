@@ -192,6 +192,7 @@ def ocr_pdf(
                 "model": model,
                 "messages": [{"role": "user", "content": content_payload}],
                 "stream": True,
+                "context_window": 32768,
             }
             label = f"page {page_number}/{len(images_b64)}"
             content_text, _ = _stream_ocr(client, url, headers, payload, label)
