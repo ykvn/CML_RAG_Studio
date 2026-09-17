@@ -157,9 +157,7 @@ const RagChatQueryInput = ({
   } = useSuggestQuestions(
     {
       session_id: sessionId ? +sessionId : undefined,
-    },
-    // don't make a request to get suggest questions if we know a question will be in flight soon
-    !search.question
+    }
   );
 
   // Use custom hook to handle batched streaming updates
