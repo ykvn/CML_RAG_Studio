@@ -81,7 +81,7 @@ Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
 Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
 
 Aturan Tambahan Jawaban:
-Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
+Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 4–5 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
 
 Format keluaran akhir:
 [Jawaban Anda di sini...]
@@ -132,7 +132,7 @@ Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
 Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
 
 Aturan Tambahan Jawaban:
-Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
+Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 4–5 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
 
 Format keluaran akhir:
 [Jawaban Anda di sini...]
