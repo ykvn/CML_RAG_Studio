@@ -73,7 +73,7 @@ export const useSuggestQuestions = (
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: suggestedQuestionKey(request.session_id),
     queryFn: () => suggestQuestionsQuery(request),
-    enabled: enable,
+    enabled: false, // Disabled to prevent slow secondary API calls
     gcTime: 0,
   });
 };

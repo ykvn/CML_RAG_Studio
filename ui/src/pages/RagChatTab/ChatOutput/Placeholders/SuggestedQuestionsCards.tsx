@@ -39,7 +39,7 @@
 import { Card, Flex, Skeleton, Typography } from "antd";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
 import { useContext } from "react";
-import { useSuggestQuestions } from "src/api/ragQueryApi.ts";
+// import { useSuggestQuestions } from "src/api/ragQueryApi.ts";
 import {
   createQueryConfiguration,
   getOnEvent,
@@ -85,15 +85,11 @@ const SuggestedQuestionsCards = () => {
     streamedChatState: [, setStreamedChat],
     streamedEventState: [, setStreamedEvent],
     streamedAbortControllerState: [, setStreamedAbortController],
+    // 1. Pull our new fast follow-ups from the context
+    streamedFollowupsState: [streamedFollowups],
   } = useContext(RagChatContext);
+  
   const sessionId = activeSession?.id;
-  const {
-    data,
-    isPending: suggestedQuestionsIsPending,
-    isFetching: suggestedQuestionsIsFetching,
-  } = useSuggestQuestions({
-    session_id: sessionId ?? undefined,
-  });
 
   const createSessionAndRedirect = useCreateSessionAndRedirect();
 
@@ -129,11 +125,9 @@ const SuggestedQuestionsCards = () => {
       }
     }
   };
-  if (
-    suggestedQuestionsIsPending ||
-    askRagIsPending ||
-    suggestedQuestionsIsFetching
-  ) {
+
+  // 2. We only show the loading skeletons while the AI is actively generating the response
+  if (askRagIsPending) {
     return (
       <Flex gap={10} wrap="wrap" justify="space-between">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -150,9 +144,10 @@ const SuggestedQuestionsCards = () => {
     );
   }
 
+  // 3. Map over the fast streamed follow-ups instead of the old data.suggested_questions
   return (
     <Flex gap={10} wrap="wrap" justify="space-between">
-      {data?.suggested_questions.map((question, index) => {
+      {streamedFollowups.map((question, index) => {
         return (
           <QuestionCard
             question={question}

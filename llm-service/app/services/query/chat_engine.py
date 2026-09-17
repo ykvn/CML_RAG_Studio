@@ -81,14 +81,11 @@ Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
 Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
 
 Aturan Tambahan Jawaban:
-Di bagian paling akhir setiap jawaban, wajib buat pemisah "---" dan berikan 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan.
+Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
 
 Format keluaran akhir:
----
-💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
-1. [Pertanyaan drill-down spesifik]
-2. [Pertanyaan perbandingan produk/kategori/wilayah lain]
-3. [Pertanyaan tren waktu/breakdown detail]
+[Jawaban Anda di sini...]
+<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?</followups>
 
 Sebagai contoh:
 
@@ -105,11 +102,7 @@ Kapan air terasa basah?
 <Answer>
 Air akan terasa basah ketika langit berwarna merah<a class="rag_citation" href="1"></a>, \
 yang terjadi pada sore hari<a class="rag_citation" href="2"></a>.
-
----
-💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
-1. Berapa suhu air saat langit berwarna merah?
-2. Apakah air tetap basah pada pagi hari?
+<followups>Berapa suhu air saat langit berwarna merah?|Apakah air tetap basah pada pagi hari?</followups>
 
 Sekarang giliran Anda. Di bawah ini adalah beberapa sumber informasi terhitung:
 
@@ -139,14 +132,11 @@ Jika tidak ada sumber yang membantu, nyatakan hal tersebut. \
 Jangan membuat ID sumber buatan. Hanya gunakan ID sumber yang tersedia pada konteks.
 
 Aturan Tambahan Jawaban:
-Di bagian paling akhir setiap jawaban, wajib buat pemisah "---" dan berikan 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan.
+Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang berisi 2–3 opsi pertanyaan lanjutan yang interaktif, kontekstual, dan spesifik terkait data atau topik yang baru saja dijelaskan. Pisahkan setiap pertanyaan dengan karakter pipe (|). JANGAN gunakan list markdown di dalam tag ini.
 
 Format keluaran akhir:
----
-💡 **Pertanyaan Lanjutan yang Mungkin Ingin Anda Tanyakan:**
-1. [Pertanyaan drill-down spesifik]
-2. [Pertanyaan perbandingan produk/kategori/wilayah lain]
-3. [Pertanyaan tren waktu/breakdown detail]
+[Jawaban Anda di sini...]
+<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?</followups>
 
 Sekarang giliran Anda. Kami telah menyediakan jawaban yang sudah ada sebelumnya:
 
