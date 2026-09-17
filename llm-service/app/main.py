@@ -40,6 +40,18 @@
 import sys
 import logging
 import platform
+import os
+from pathlib import Path
+
+# --- GLOBAL TEMP OVERRIDE ---
+# Force LibreOffice (and all Python tempfile generation) to use the executable CML home directory
+# rather than the restricted root /tmp directory.
+custom_tmp = Path("/home/cdsw/.custom_tmp")
+custom_tmp.mkdir(parents=True, exist_ok=True)
+os.environ["TMPDIR"] = str(custom_tmp)
+os.environ["TEMP"] = str(custom_tmp)
+os.environ["TMP"] = str(custom_tmp)
+# ----------------------------
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +66,6 @@ except Exception as e:
     )
 
 import functools
-import os
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
