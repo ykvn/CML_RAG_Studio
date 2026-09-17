@@ -42,6 +42,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -160,7 +161,7 @@ class DoclingReader(BaseReader):
         temp_dir = Path(tempfile.mkdtemp(prefix="docling_pptx_"))
         
         # Use a profile location on an executable filesystem
-        profile_dir = _writable_profile_dir() / f"lo_profile_{os.getpid()}"
+        profile_dir = _writable_profile_dir() / f"lo_profile_{uuid.uuid4().hex}"
         profile_dir.mkdir(parents=True, exist_ok=True)
         
         env = os.environ.copy()
