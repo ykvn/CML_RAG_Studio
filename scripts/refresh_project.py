@@ -51,7 +51,7 @@ print(subprocess.run(["bash", "scripts/refresh_project.sh"], check=True))
 
 
 print(
-    "Project refresh complete. Restarting the RagStudio Application to pick up changes, if this isn't the initial deployment."
+    "Project refresh complete. Restarting the Document Intelligence Application to pick up changes, if this isn't the initial deployment."
 )
 
 print(subprocess.run("python scripts/restart_app.py", shell=True, check=True))
