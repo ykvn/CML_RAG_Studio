@@ -67,17 +67,7 @@ from app.services.query.querier import (
 )
 from app.services.query.query_configuration import QueryConfiguration
 
-_DIRECT_LLM_FOLLOWUP_INSTRUCTION = (
-    " At the end of your answer, you MUST include an XML tag "
-    "<followups> containing 2-3 interactive, contextual, and specific "
-    "follow-up questions related to the data or topic just explained. "
-    "Separate each question with a pipe (|) character. "
-    "Do NOT use markdown lists inside this tag. "
-    "Example: <followups>What are the trends?|How does this compare?|What is the root cause?</followups>"
-)
-
-
-_DIRECT_LLM_FOLLOWUP_INSTRUCTION = (
+_FOLLOWUP_INSTRUCTION = (
     "\n\nAt the end of every answer, you MUST include an XML tag "
     "<followups> containing 2-3 interactive, contextual, and specific "
     "follow-up questions related to the data or topic just explained. "
@@ -199,16 +189,6 @@ def build_streamer(
         session=session,
     )
     return condensed_question, streaming_chat_response
-
-
-_FOLLOWUP_INSTRUCTION = (
-    " At the end of your answer, you MUST include an XML tag "
-    "<followups> containing 2-3 interactive, contextual, and specific "
-    "follow-up questions related to the data or topic just explained. "
-    "Separate each question with a pipe character (|). "
-    "Do NOT use markdown lists inside this tag. "
-    "Format: <followups>Question 1?|Question 2?|Question 3?</followups>"
-)
 
 
 def _stream_direct_llm_chat(

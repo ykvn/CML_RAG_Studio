@@ -150,16 +150,6 @@ const RagChatQueryInput = ({
     },
   });
 
-  const {
-    data: sampleQuestions,
-    isFetching: sampleQuestionsIsFetching,
-    error: sampleQuestionsError,
-  } = useSuggestQuestions(
-    {
-      session_id: sessionId ? +sessionId : undefined,
-    }
-  );
-
   // Track whether we are currently inside a <followups>...</followups> block
   const isBufferingFollowups = useRef(false);
   const followupsBuffer = useRef("");

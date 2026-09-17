@@ -38,7 +38,7 @@
 
 import { Card, Flex, Skeleton, Typography } from "antd";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
-import { useContext } from "react";
+import { useContext, useRef } from "react";
 // import { useSuggestQuestions } from "src/api/ragQueryApi.ts";
 import {
   createQueryConfiguration,
@@ -86,7 +86,7 @@ const SuggestedQuestionsCards = () => {
     streamedEventState: [, setStreamedEvent],
     streamedAbortControllerState: [, setStreamedAbortController],
     // 1. Pull our new fast follow-ups from the context
-    streamedFollowupsState: [streamedFollowups],
+    streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
   } = useContext(RagChatContext);
   
   const sessionId = activeSession?.id;
