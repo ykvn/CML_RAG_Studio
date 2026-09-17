@@ -117,9 +117,9 @@ const RagChatQueryInput = ({
 
   const [userInput, setUserInput] = useState("");
   const { sessionId } = useParams({ strict: false });
-  const search: { question?: string } = useSearch({
-    strict: false,
-  });
+  //const search: { question?: string } = useSearch({
+  //  strict: false,
+  //});
   const { data: llmModels } = useSuspenseQuery(getLlmModelsQueryOptions);
   const [inferenceModel, setInferenceModel] = useState<string>(() => {
     if (sessionId) {
