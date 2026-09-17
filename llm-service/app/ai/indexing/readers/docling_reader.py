@@ -43,6 +43,8 @@ import shutil
 import subprocess
 import tempfile
 import uuid
+import fcntl
+import json
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -246,17 +248,49 @@ class DoclingReader(BaseReader):
         return pdf_path, temp_dir
 
     def load_chunks(self, file_path: Path) -> ChunksResult:
-        # The Qwen engine rasterizes pages and asks an external multimodal model to
-        # extract the text. It is only applicable to raster-able inputs (PDF / slides).
-        # HTML keeps using the Docling engine regardless.
-        if (
-            settings.enhanced_pdf_engine == "qwen"
-            and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
-        ):
-            logger.info("OCR engine for %s: Qwen (Qwen3.8-27B-ocr)", file_path.name)
-            return self._load_chunks_qwen(file_path)
-        logger.info("OCR engine for %s: Docling (EasyOCR)", file_path.name)
-        return self._load_chunks_docling(file_path)
+        # Define cache and lock file paths next to the original document
+        cache_file = file_path.with_suffix(".chunks.json")
+        lock_file = file_path.with_suffix(".lock")
+
+        # Open (or create) the lock file
+        with open(lock_file, "w") as lf:
+            # 1. Grab an exclusive lock. If another thread is already processing this file,
+            #    this thread will pause and wait here until the lock is released.
+            fcntl.flock(lf, fcntl.LOCK_EX)
+            
+            try:
+                # 2. Check if the cache was created while we were waiting
+                if cache_file.exists():
+                    logger.info(f"Loading cached OCR chunks for {file_path.name}")
+                    with open(cache_file, "r") as f:
+                        data = json.load(f)
+                        # Reconstruct LlamaIndex TextNodes from the JSON dictionaries
+                        chunks = [TextNode.from_dict(d) for d in data]
+                    return ChunksResult(chunks)
+
+                # 3. If no cache exists, run the heavy OCR logic
+                if (
+                    settings.enhanced_pdf_engine == "qwen"
+                    and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
+                ):
+                    logger.info("OCR engine for %s: Qwen (Qwen3.8-27B-ocr)", file_path.name)
+                    result = self._load_chunks_qwen(file_path)
+                else:
+                    logger.info("OCR engine for %s: Docling (EasyOCR)", file_path.name)
+                    result = self._load_chunks_docling(file_path)
+
+                # 4. Save the processed chunks to the JSON cache for the next task
+                try:
+                    with open(cache_file, "w") as f:
+                        json.dump([chunk.to_dict() for chunk in result.chunks], f)
+                except Exception as e:
+                    logger.warning(f"Failed to write cache file for {file_path.name}: {e}")
+
+                return result
+                
+            finally:
+                # 5. Release the lock so the waiting task can proceed and read the cache
+                fcntl.flock(lf, fcntl.LOCK_UN)
 
     def _load_chunks_qwen(self, file_path: Path) -> ChunksResult:
         document = Document()
