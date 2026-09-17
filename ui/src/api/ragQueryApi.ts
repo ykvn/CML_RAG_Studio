@@ -65,8 +65,7 @@ export const suggestedQuestionKey = (
 };
 
 export const useSuggestQuestions = (
-  request: SuggestQuestionsRequest,
-  enable = true,
+  request: SuggestQuestionsRequest
 ) => {
   return useQuery({
     // Note: We only want to invalidate the query when the data_source_id changes, not when chat history changes
