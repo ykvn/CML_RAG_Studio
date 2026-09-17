@@ -15,7 +15,9 @@ const renderParser = () => {
       hook.result.current.onChunk(chunk);
       hook.result.current.flush();
     },
-    reset: () => hook.result.current.reset(),
+    reset: () => {
+      hook.result.current.reset();
+    },
   };
 };
 
@@ -42,7 +44,9 @@ describe("useFollowupsStreamParser", () => {
       (call) => call[0] as string,
     );
     // The tag must never leak into the chat text
-    chatCalls.forEach((text) => expect(text).not.toContain("<"));
+    chatCalls.forEach((text) => {
+      expect(text).not.toContain("<");
+    });
     expect(chatCalls[chatCalls.length - 1]).toBe("Answer");
     expect(parser.setStreamedFollowups).toHaveBeenCalledWith([
       "Q1?",
