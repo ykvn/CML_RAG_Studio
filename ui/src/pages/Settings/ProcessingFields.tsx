@@ -37,7 +37,7 @@
  ******************************************************************************/
 
 import { ProjectConfig } from "src/api/ampMetadataApi.ts";
-import { Flex, Form, Segmented, Switch, Typography } from "antd";
+import { Flex, Form, Radio, Switch, Typography } from "antd";
 import { cdlWhite } from "src/cuix/variables.ts";
 
 export const ProcessingFields = ({
@@ -118,12 +118,14 @@ export const ProcessingFields = ({
           "OPENAI_API_KEY to be configured)."
         }
       >
-        <Segmented
-          disabled={!enhancedEnabled}
+        <Radio.Group
+          optionType="button"
+          buttonStyle="solid"
           options={[
-            { label: "Docling (EasyOCR)", value: "docling" },
-            { label: "Qwen (Qwen3.8-27B-ocr)", value: "qwen" },
+            { value: "docling", label: "Docling (OCR)" },
+            { value: "qwen", label: "Qwen3.8-27B-ocr" },
           ]}
+          disabled={!enhancedEnabled}
         />
       </Form.Item>
     </Flex>
