@@ -52,9 +52,6 @@ import time
 import urllib.parse
 import httpx
 
-if os.environ.get("JOB_ARGUMENTS"):
-    sys.argv = [sys.argv[0]] + shlex.split(os.environ["JOB_ARGUMENTS"])
-
 AUTH_URL = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v1/auth"
 DOWNLOAD_URL_TEMPLATE = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v2/nodes/{node_id}/versions/{version_number}/content"
 UPLOAD_URL_TEMPLATE = "https://rag.cai.apps.dataservices.bni.co.id/api/v1/rag/dataSources/{dataSourceId}/files"
@@ -114,18 +111,15 @@ def process_documents(client, data_source_id, ticket, bearer_token, node_ids, de
     for index, node_id in enumerate(node_ids, start=1):
         print(f"[-] [{index}/{total_files}] Processing DataID {node_id}...")
 
-        # 1. Download file content from OTCS
         download_url = DOWNLOAD_URL_TEMPLATE.format(node_id=node_id, version_number=1)
         try:
             download_res = client.get(download_url, headers=headers_download)
             download_res.raise_for_status()
 
-            # 2. Extract filename & dynamically detect content-type
             file_name = get_filename_from_response(download_res, node_id)
             guessed_type, _ = mimetypes.guess_type(file_name)
             content_type = guessed_type or download_res.headers.get("Content-Type") or "application/octet-stream"
 
-            # 3. Stream directly to target RAG API
             files = {
                 "file": (file_name, download_res.content, content_type)
             }
@@ -137,7 +131,6 @@ def process_documents(client, data_source_id, ticket, bearer_token, node_ids, de
                 follow_redirects=False
             )
 
-            # Detect unauthenticated SSO redirects
             if upload_res.status_code in (301, 302, 303, 307):
                 print(f"  [X] Failed: Request redirected to {upload_res.headers.get('location')}. Verify Bearer token.")
                 continue
@@ -151,13 +144,22 @@ def process_documents(client, data_source_id, ticket, bearer_token, node_ids, de
         except httpx.HTTPError as err:
             print(f"  [X] Error processing DataID {node_id}: {err}")
 
-        # 4. Delay before processing next file
         if index < total_files:
             print(f"  [...] Waiting {delay_seconds} seconds before next request...")
             time.sleep(delay_seconds)
 
 
-def main():
+def get_args():
+    job_args = os.environ.get("JOB_ARGUMENTS", "").strip()
+
+    if job_args:
+        # Override sys.argv with CML JOB_ARGUMENTS when running as a CML Job
+        sys.argv = [sys.argv[0]] + shlex.split(job_args)
+    elif "ipykernel" in sys.argv[0]:
+        # Running interactively inside CML Workbench / Jupyter session
+        print("[!] Interactive session detected. Injecting fallback parameters...")
+        sys.argv = [sys.argv[0], "961", "--file", "scripts/document_list.txt"]
+
     parser = argparse.ArgumentParser(
         description="Fetch documents from OTCS using an ID file and upload them to a target RAG Data Source.",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -166,7 +168,11 @@ def main():
     parser.add_argument("--file", "-f", required=True, help="Path to text file containing DataIDs")
     parser.add_argument("--delay", type=int, default=30, help="Delay in seconds between files (default: 30)")
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    args = get_args()
 
     username = os.getenv("OTCS_USERNAME") or input("Enter OTCS Username: ").strip()
     password = os.getenv("OTCS_PASSWORD") or getpass.getpass("Enter OTCS Password: ")
