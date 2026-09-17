@@ -146,11 +146,11 @@ class OpenAiModelProvider(_ModelProvider):
     @staticmethod
     def list_llm_models() -> list[ModelResponse]:
         return [
-            ModelResponse(
-                model_id="Qwen3.8-27B",
-                name="Qwen3.8-27B",
-                tool_calling_supported=True,
-            ),
+            #ModelResponse(
+            #    model_id="Qwen3.8-27B",
+            #    name="Qwen3.8-27B",
+            #    tool_calling_supported=True,
+            #),
             ModelResponse(
                 model_id="Qwen3.8-27B-no-thinking",
                 name="Qwen3.8-27B-no-thinking",
@@ -161,16 +161,16 @@ class OpenAiModelProvider(_ModelProvider):
                 name="Qwen3.8-27B-low",
                 tool_calling_supported=True,
             ),
-            ModelResponse(
-                model_id="Qwen3.8-27B-medium",
-                name="Qwen3.8-27B-medium",
-                tool_calling_supported=True,
-            ),
-            ModelResponse(
-                model_id="Qwen3.8-27B-xhigh",
-                name="Qwen3.8-27B-xhigh",
-                tool_calling_supported=True,
-            ),
+            #ModelResponse(
+            #    model_id="Qwen3.8-27B-medium",
+            #    name="Qwen3.8-27B-medium",
+            #    tool_calling_supported=True,
+            #),
+            #ModelResponse(
+            #    model_id="Qwen3.8-27B-xhigh",
+            #    name="Qwen3.8-27B-xhigh",
+            #    tool_calling_supported=True,
+            #),
             ModelResponse(
                 model_id="Qwen3.8-27B-ocr",
                 name="Qwen3.8-27B-ocr",
