@@ -85,7 +85,7 @@ Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang beris
 
 Format keluaran akhir:
 [Jawaban Anda di sini...]
-<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?</followups>
+<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?|Pertanyaan dampak/penyebab spesifik?</followups>
 
 Sebagai contoh:
 
@@ -102,7 +102,7 @@ Kapan air terasa basah?
 <Answer>
 Air akan terasa basah ketika langit berwarna merah<a class="rag_citation" href="1"></a>, \
 yang terjadi pada sore hari<a class="rag_citation" href="2"></a>.
-<followups>Berapa suhu air saat langit berwarna merah?|Apakah air tetap basah pada pagi hari?</followups>
+<followups>Berapa suhu air saat langit berwarna merah?|Apakah air tetap basah pada pagi hari?|Mengapa warna langit berubah menjadi biru di pagi hari?|Apa yang menyebabkan langit berwarna merah di sore hari?</followups>
 
 Sekarang giliran Anda. Di bawah ini adalah beberapa sumber informasi terhitung:
 
@@ -136,7 +136,7 @@ Di bagian paling akhir setiap jawaban, WAJIB buat tag XML <followups> yang beris
 
 Format keluaran akhir:
 [Jawaban Anda di sini...]
-<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?</followups>
+<followups>Pertanyaan drill-down spesifik?|Pertanyaan perbandingan produk/kategori?|Pertanyaan tren waktu?|Pertanyaan dampak/penyebab spesifik?</followups>
 
 Sekarang giliran Anda. Kami telah menyediakan jawaban yang sudah ada sebelumnya:
 
