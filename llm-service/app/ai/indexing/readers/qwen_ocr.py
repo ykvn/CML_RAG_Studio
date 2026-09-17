@@ -42,6 +42,7 @@ import logging
 import re
 from pathlib import Path
 from typing import List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import httpx
 
@@ -151,17 +152,53 @@ def _stream_ocr(
     return content_text, finish_reason
 
 
+def _process_single_page(
+    client: httpx.Client,
+    page_number: int,
+    img_b64: str,
+    total_pages: int,
+    model: str,
+    url: str,
+    headers: dict,
+) -> Tuple[int, str]:
+    """Worker function to process a single page via the API."""
+    content_payload = [
+        {"type": "text", "text": OCR_PAGE_PROMPT},
+        {
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
+        },
+    ]
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": content_payload}],
+        "stream": True,
+        "context_window": 32768,
+    }
+    label = f"page {page_number}/{total_pages}"
+    
+    try:
+        content_text, _ = _stream_ocr(client, url, headers, payload, label)
+        logger.info(
+            "Qwen OCR %s done: %d char(s), finish_reason captured",
+            label,
+            len(content_text),
+        )
+        return page_number, content_text.strip()
+    except Exception as e:
+        logger.error("Qwen OCR %s failed: %s", label, e)
+        return page_number, ""
+
+
 def ocr_pdf(
     pdf_path: Path,
     model: str = QWEN_OCR_MODEL,
     dpi: int = OCR_DPI,
 ) -> List[Tuple[int, str]]:
-    """Run Qwen OCR over a PDF, one request per page.
+    """Run Qwen OCR over a PDF concurrently.
 
-    Each page is sent as its own request so that every page/table gets the model's
-    full output-token budget, avoiding mid-table truncation. Returns a list of
-    (page_number, text) for every non-empty page.
-    ``reasoning_content`` is discarded; ``finish_reason`` is logged.
+    Pages are sent in parallel via a ThreadPoolExecutor to drastically reduce 
+    overall processing time, and the results are sorted sequentially afterward.
     """
     base_url = (settings.openai_api_base or "").rstrip("/")
     api_key = settings.openai_api_key
@@ -171,40 +208,43 @@ def ocr_pdf(
         )
 
     images_b64 = pdf_to_base64_images(pdf_path, dpi=dpi)
+    total_pages = len(images_b64)
     url = f"{base_url}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}"}
 
-    logger.info("Qwen OCR: processing %d page(s)", len(images_b64))
+    logger.info("Qwen OCR: processing %d page(s) concurrently", total_pages)
 
-    results: List[Tuple[int, str]] = []
+    results_dict = {}
+    
+    # Process up to 10 pages concurrently to maximize H200 throughput without overwhelming gateway timeouts
+    max_workers = min(5, total_pages) if total_pages > 0 else 1
+
     with httpx.Client(
         verify=False, timeout=httpx.Timeout(OCR_TIMEOUT, connect=10.0)
     ) as client:
-        for page_number, img in enumerate(images_b64, start=1):
-            content_payload: List[dict] = [
-                {"type": "text", "text": OCR_PAGE_PROMPT},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{img}"},
-                },
-            ]
-            payload = {
-                "model": model,
-                "messages": [{"role": "user", "content": content_payload}],
-                "stream": True,
-                "context_window": 32768,
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    _process_single_page, 
+                    client, 
+                    page_number, 
+                    img, 
+                    total_pages, 
+                    model, 
+                    url, 
+                    headers
+                ): page_number
+                for page_number, img in enumerate(images_b64, start=1)
             }
-            label = f"page {page_number}/{len(images_b64)}"
-            content_text, _ = _stream_ocr(client, url, headers, payload, label)
-            logger.info(
-                "Qwen OCR %s done: %d char(s), finish_reason captured",
-                label,
-                len(content_text),
-            )
-            if content_text.strip():
-                results.append((page_number, content_text.strip()))
 
-    if not results and images_b64:
-        logger.warning("Qwen OCR produced no text for %d page(s).", len(images_b64))
+            for future in as_completed(futures):
+                page_num, text_content = future.result()
+                if text_content:
+                    results_dict[page_num] = text_content
 
-    return results
+    if not results_dict and images_b64:
+        logger.warning("Qwen OCR produced no text for %d page(s).", total_pages)
+
+    # Sort results by page number to guarantee chunks remain in sequential order
+    sorted_results = [(pn, results_dict[pn]) for pn in sorted(results_dict.keys())]
+    return sorted_results
