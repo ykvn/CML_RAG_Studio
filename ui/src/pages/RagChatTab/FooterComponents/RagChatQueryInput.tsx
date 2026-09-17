@@ -64,7 +64,7 @@ import {
   getOnEvent,
   useStreamingChatMutation,
 } from "src/api/chatApi.ts";
-import { useParams, useSearch } from "@tanstack/react-router";
+//import { useParams, useSearch } from "@tanstack/react-router";
 import { cdlBlue600, cdlRed600 } from "src/cuix/variables.ts";
 import { useSuggestQuestions } from "src/api/ragQueryApi.ts";
 import SuggestedQuestionsFooter from "pages/RagChatTab/FooterComponents/SuggestedQuestionsFooter.tsx";
