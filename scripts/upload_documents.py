@@ -153,12 +153,7 @@ def get_args():
     job_args = os.environ.get("JOB_ARGUMENTS", "").strip()
 
     if job_args:
-        # Override sys.argv with CML JOB_ARGUMENTS when running as a CML Job
         sys.argv = [sys.argv[0]] + shlex.split(job_args)
-    elif "ipykernel" in sys.argv[0]:
-        # Running interactively inside CML Workbench / Jupyter session
-        print("[!] Interactive session detected. Injecting fallback parameters...")
-        sys.argv = [sys.argv[0], "961", "--file", "scripts/document_list.txt"]
 
     parser = argparse.ArgumentParser(
         description="Fetch documents from OTCS using an ID file and upload them to a target RAG Data Source.",
