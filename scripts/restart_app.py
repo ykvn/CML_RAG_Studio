@@ -46,7 +46,8 @@ client = cmlapi.default_client()
 project_id = os.environ["CDSW_PROJECT_ID"]
 cml_apps = client.list_applications(project_id=project_id)
 # ragstudio_apps = ["RagStudioMetadata", "RagStudio"]
-ragstudio_apps = ["RagStudio"]
+# ragstudio_apps = ["RagStudio"]
+ragstudio_apps = ["Document Intelligence"]
 
 if len(cml_apps.applications) > 0:
     for app_name in ragstudio_apps:
