@@ -36,18 +36,9 @@
  * DATA.
  ******************************************************************************/
 
-import {
-  Alert,
-  Collapse,
-  Flex,
-  Skeleton,
-  Tag,
-  Tooltip,
-  Typography,
-} from "antd";
-import { useState } from "react";
+import { Alert, Flex, Skeleton, Tag, Typography } from "antd";
 import { SendOutlined } from "@ant-design/icons";
-import { cdlBlue600, cdlOrange500 } from "src/cuix/variables.ts";
+import { cdlBlue600 } from "src/cuix/variables.ts";
 import AiAssistantIcon from "src/cuix/icons/AiAssistantIcon.ts";
 
 export const SuggestedQuestionButton = ({
@@ -107,73 +98,43 @@ const SuggestedQuestionsFooter = ({
   condensedQuestion?: string;
   error?: Error | null;
 }) => {
-  const [toggleCollapse, setToggleCollapse] = useState(false);
-
   return (
-    <Flex
-      onClick={() => {
-        setToggleCollapse(!toggleCollapse);
-      }}
-      vertical
-      gap={10}
-      style={{ width: "100%" }}
-    >
-      <Collapse
-        defaultActiveKey={["1"]}
-        size="small"
-        ghost
-        activeKey={toggleCollapse ? ["1"] : [""]}
-        items={[
-          {
-            key: "1",
-            label: (
-              <Flex gap={8} align="center">
-                <Typography.Text
-                  type="secondary"
-                  style={{ margin: 0, marginTop: 1, fontSize: 12 }}
-                >
-                  Suggested Questions
-                </Typography.Text>
-                {condensedQuestion ? (
-                  <Tooltip title="Alternative question available">
-                    <AiAssistantIcon style={{ color: cdlOrange500 }} />
-                  </Tooltip>
-                ) : null}
-              </Flex>
-            ),
-            children: (
-              <Flex vertical gap={12}>
-                {condensedQuestion ? (
-                  <SuggestedQuestionButton
-                    question={condensedQuestion}
-                    handleChat={handleChat}
-                    rewritten={true}
-                    key={condensedQuestion}
-                  />
-                ) : null}
-                {error ? (
-                  <Alert
-                    type="error"
-                    message={`Error fetching suggested questions: ${error}`}
-                  />
-                ) : null}
-                {isLoading ? (
-                  <Skeleton paragraph={{ rows: 2 }} active />
-                ) : (
-                  questions.map((question) => (
-                    <SuggestedQuestionButton
-                      question={question}
-                      handleChat={handleChat}
-                      rewritten={false}
-                      key={question}
-                    />
-                  ))
-                )}
-              </Flex>
-            ),
-          },
-        ]}
-      />
+    <Flex vertical gap={10} style={{ width: "100%" }}>
+      {condensedQuestion ? (
+        <SuggestedQuestionButton
+          question={condensedQuestion}
+          handleChat={handleChat}
+          rewritten={true}
+        />
+      ) : null}
+      {error ? (
+        <Alert
+          type="error"
+          message={`Error fetching suggested questions: ${error}`}
+        />
+      ) : null}
+      {isLoading ? (
+        <Skeleton paragraph={{ rows: 2 }} active />
+      ) : (
+        <Flex vertical gap={10}>
+          <Typography.Text
+            type="secondary"
+            style={{ margin: 0, marginTop: 1, fontSize: 12 }}
+          >
+            Suggested Follow-up Questions
+          </Typography.Text>
+          <Flex vertical gap={12}>
+            {questions.slice(0, 5).map((question) => (
+              <SuggestedQuestionButton
+                question={question}
+                handleChat={handleChat}
+                rewritten={false}
+                key={question}
+              />
+            ))}
+          </Flex>
+        </Flex>
+      )}
     </Flex>
   );
 };

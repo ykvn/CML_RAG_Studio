@@ -43,6 +43,12 @@ import rehypeRaw from "rehype-raw";
 import { ComponentProps, ReactElement } from "react";
 import { SourceCard } from "pages/RagChatTab/ChatOutput/Sources/SourceCard.tsx";
 
+const FOLLOWUPS_BLOCK_RE = /<followups>[\s\S]*?<\/followups>/gi;
+
+function stripFollowups(text: string): string {
+  return text.replace(FOLLOWUPS_BLOCK_RE, "").trimStart();
+}
+
 export const MarkdownResponse = ({ data }: { data: ChatMessageType }) => {
   return (
     <Markdown
@@ -50,7 +56,7 @@ export const MarkdownResponse = ({ data }: { data: ChatMessageType }) => {
       remarkPlugins={[Remark]}
       rehypePlugins={[rehypeRaw]}
       className="styled-markdown"
-      children={data.rag_message.assistant.trimStart()}
+      children={stripFollowups(data.rag_message.assistant)}
       components={{
         img: (
           props: ComponentProps<"img">,

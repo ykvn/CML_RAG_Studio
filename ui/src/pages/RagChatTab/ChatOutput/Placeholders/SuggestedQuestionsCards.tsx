@@ -39,7 +39,6 @@
 import { Card, Flex, Skeleton, Typography } from "antd";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
 import { useContext } from "react";
-// import { useSuggestQuestions } from "src/api/ragQueryApi.ts";
 import {
   createQueryConfiguration,
   getOnEvent,
@@ -59,7 +58,7 @@ const QuestionCard = ({
 }) => {
   return (
     <Card
-      size={"small"}
+      size="small"
       hoverable
       style={{
         width: 178,
@@ -67,7 +66,9 @@ const QuestionCard = ({
         padding: 0,
       }}
       extra={
-        <Typography.Text type="secondary">{`#${(index + 1).toString()}`}</Typography.Text>
+        <Typography.Text type="secondary">
+          {`#${(index + 1).toString()}`}
+        </Typography.Text>
       }
       onClick={() => {
         onClick(question);
@@ -85,15 +86,13 @@ const SuggestedQuestionsCards = () => {
     streamedChatState: [, setStreamedChat],
     streamedEventState: [, setStreamedEvent],
     streamedAbortControllerState: [, setStreamedAbortController],
-    // 1. Pull our new fast follow-ups from the context
     streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
   } = useContext(RagChatContext);
-  
+
   const sessionId = activeSession?.id;
 
   const createSessionAndRedirect = useCreateSessionAndRedirect();
 
-  // Robust <followups> parsing that handles tags split across chunk boundaries
   const { onChunk, flush, reset: resetFollowups } = useFollowupsStreamParser(
     setStreamedChat,
     setStreamedFollowups,
@@ -104,7 +103,6 @@ const SuggestedQuestionsCards = () => {
       onChunk,
       onEvent: getOnEvent(setStreamedEvent),
       onSuccess: () => {
-        // Flush any remaining chunks before cleanup
         flush();
         setStreamedChat("");
       },
@@ -128,10 +126,9 @@ const SuggestedQuestionsCards = () => {
     }
   };
 
-  // 2. We only show the loading skeletons while the AI is actively generating the response
   if (askRagIsPending) {
     return (
-      <Flex gap={10} wrap="wrap" justify="space-between">
+      <Flex gap={10} wrap="wrap" style={{ width: "100%" }}>
         {Array.from({ length: 4 }).map((_, index) => (
           <Skeleton
             key={index}
@@ -146,19 +143,24 @@ const SuggestedQuestionsCards = () => {
     );
   }
 
-  // 3. Map over the fast streamed follow-ups instead of the old data.suggested_questions
   return (
-    <Flex gap={10} wrap="wrap" justify="space-between">
-      {streamedFollowups.map((question, index) => {
-        return (
+    <Flex gap={10} wrap="wrap" style={{ width: "100%" }}>
+      <Typography.Text
+        type="secondary"
+        style={{ margin: 0, marginTop: 1, fontSize: 12 }}
+      >
+        Suggested Follow-up Questions
+      </Typography.Text>
+      <Flex gap={10} wrap="wrap" style={{ marginTop: 4 }}>
+        {streamedFollowups.slice(0, 5).map((question, index) => (
           <QuestionCard
             question={question}
             index={index}
             key={index}
             onClick={handleAskSample}
           />
-        );
-      })}
+        ))}
+      </Flex>
     </Flex>
   );
 };

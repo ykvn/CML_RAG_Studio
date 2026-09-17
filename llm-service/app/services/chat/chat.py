@@ -197,7 +197,7 @@ def direct_llm_chat(
         evaluations=[],
         rag_message=RagMessage(
             user=query,
-            assistant=str(chat_response.message.content),
+            assistant=strip_followups(str(chat_response.message.content)),
         ),
         timestamp=time.time(),
         condensed_question=None,
