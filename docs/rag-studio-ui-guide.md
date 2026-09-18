@@ -167,6 +167,7 @@ Type a question and send. If no session exists, a new session is created automat
 
 - **Empty Chat**: When a session exists with no messages, Suggested Questions cards appear in the chat body. They are generated from the selected knowledge base(s). If none are selected or available, a default starter list is shown.
 - **After Messages**: Follow-up suggestions appear near the input, tailored to the current session. If no knowledge base is in use, a default list is shown.
+- **Minimize Suggestions**: Use the minus/plus control next to **Suggested Follow-up Questions** to collapse or expand the suggestions. The preference is remembered across sessions and applies to both the follow-up list and the empty-chat cards.
 - **Sources and Feedback**: Each answer shows citations ("Sources") and optional evaluations (e.g., relevance, faithfulness). Use the copy and rating/feedback controls under each answer.
 
 ![suggested-kb](images/suggested-questions-kb.png)

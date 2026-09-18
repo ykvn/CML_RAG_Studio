@@ -46,6 +46,8 @@ import {
 } from "src/api/chatApi.ts";
 import useCreateSessionAndRedirect from "pages/RagChatTab/ChatOutput/hooks/useCreateSessionAndRedirect";
 import { useFollowupsStreamParser } from "src/hooks/useFollowupsStreamParser.ts";
+import { useSuggestedQuestionsCollapsed } from "src/hooks/useSuggestedQuestionsCollapsed.ts";
+import SuggestedQuestionsToggle from "pages/RagChatTab/FooterComponents/SuggestedQuestionsToggle.tsx";
 
 const QuestionCard = ({
   question,
@@ -93,10 +95,11 @@ const SuggestedQuestionsCards = () => {
 
   const createSessionAndRedirect = useCreateSessionAndRedirect();
 
-  const { onChunk, flush, reset: resetFollowups } = useFollowupsStreamParser(
-    setStreamedChat,
-    setStreamedFollowups,
-  );
+  const {
+    onChunk,
+    flush,
+    reset: resetFollowups,
+  } = useFollowupsStreamParser(setStreamedChat, setStreamedFollowups);
 
   const { mutate: chatMutation, isPending: askRagIsPending } =
     useStreamingChatMutation({
@@ -110,6 +113,8 @@ const SuggestedQuestionsCards = () => {
         setStreamedAbortController(ctrl);
       },
     });
+
+  const { collapsed, toggleCollapsed } = useSuggestedQuestionsCollapsed();
 
   const handleAskSample = (suggestedQuestion: string) => {
     if (suggestedQuestion.length > 0) {
@@ -126,41 +131,49 @@ const SuggestedQuestionsCards = () => {
     }
   };
 
-  if (askRagIsPending) {
-    return (
-      <Flex gap={10} wrap="wrap" style={{ width: "100%" }}>
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton
-            key={index}
-            active
-            style={{
-              width: 178,
-              padding: 0,
-            }}
-          />
-        ))}
-      </Flex>
-    );
-  }
-
   return (
-    <Flex gap={10} wrap="wrap" style={{ width: "100%" }}>
-      <Typography.Text
-        type="secondary"
-        style={{ margin: 0, marginTop: 1, fontSize: 12 }}
-      >
-        Suggested Follow-up Questions
-      </Typography.Text>
-      <Flex gap={10} wrap="wrap" style={{ marginTop: 4 }}>
-        {streamedFollowups.slice(0, 5).map((question, index) => (
-          <QuestionCard
-            question={question}
-            index={index}
-            key={index}
-            onClick={handleAskSample}
-          />
-        ))}
+    <Flex vertical gap={10} style={{ width: "100%" }}>
+      <Flex align="center" gap={4}>
+        <Typography.Text
+          type="secondary"
+          style={{ margin: 0, marginTop: 1, fontSize: 12 }}
+        >
+          Suggested Follow-up Questions
+        </Typography.Text>
+        <SuggestedQuestionsToggle
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
+        />
       </Flex>
+      {collapsed ? null : (
+        <>
+          {askRagIsPending ? (
+            <Flex gap={10} wrap="wrap">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton
+                  key={index}
+                  active
+                  style={{
+                    width: 178,
+                    padding: 0,
+                  }}
+                />
+              ))}
+            </Flex>
+          ) : (
+            <Flex gap={10} wrap="wrap" style={{ marginTop: 4 }}>
+              {streamedFollowups.slice(0, 5).map((question, index) => (
+                <QuestionCard
+                  question={question}
+                  index={index}
+                  key={index}
+                  onClick={handleAskSample}
+                />
+              ))}
+            </Flex>
+          )}
+        </>
+      )}
     </Flex>
   );
 };

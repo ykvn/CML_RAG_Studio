@@ -40,6 +40,8 @@ import { Alert, Flex, Skeleton, Tag, Typography } from "antd";
 import { SendOutlined } from "@ant-design/icons";
 import { cdlBlue600 } from "src/cuix/variables.ts";
 import AiAssistantIcon from "src/cuix/icons/AiAssistantIcon.ts";
+import { useSuggestedQuestionsCollapsed } from "src/hooks/useSuggestedQuestionsCollapsed.ts";
+import SuggestedQuestionsToggle from "pages/RagChatTab/FooterComponents/SuggestedQuestionsToggle.tsx";
 
 export const SuggestedQuestionButton = ({
   question,
@@ -98,6 +100,8 @@ const SuggestedQuestionsFooter = ({
   condensedQuestion?: string;
   error?: Error | null;
 }) => {
+  const { collapsed, toggleCollapsed } = useSuggestedQuestionsCollapsed();
+
   return (
     <Flex vertical gap={10} style={{ width: "100%" }}>
       {condensedQuestion ? (
@@ -107,33 +111,41 @@ const SuggestedQuestionsFooter = ({
           rewritten={true}
         />
       ) : null}
-      {error ? (
-        <Alert
-          type="error"
-          message={`Error fetching suggested questions: ${error}`}
+      <Flex align="center" gap={4}>
+        <Typography.Text
+          type="secondary"
+          style={{ margin: 0, marginTop: 1, fontSize: 12 }}
+        >
+          Suggested Follow-up Questions
+        </Typography.Text>
+        <SuggestedQuestionsToggle
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
         />
-      ) : null}
-      {isLoading ? (
-        <Skeleton paragraph={{ rows: 2 }} active />
-      ) : (
-        <Flex vertical gap={10}>
-          <Typography.Text
-            type="secondary"
-            style={{ margin: 0, marginTop: 1, fontSize: 12 }}
-          >
-            Suggested Follow-up Questions
-          </Typography.Text>
-          <Flex vertical gap={12}>
-            {questions.slice(0, 5).map((question) => (
-              <SuggestedQuestionButton
-                question={question}
-                handleChat={handleChat}
-                rewritten={false}
-                key={question}
-              />
-            ))}
-          </Flex>
-        </Flex>
+      </Flex>
+      {collapsed ? null : (
+        <>
+          {error ? (
+            <Alert
+              type="error"
+              message={`Error fetching suggested questions: ${error}`}
+            />
+          ) : null}
+          {isLoading ? (
+            <Skeleton paragraph={{ rows: 2 }} active />
+          ) : (
+            <Flex vertical gap={12}>
+              {questions.slice(0, 5).map((question) => (
+                <SuggestedQuestionButton
+                  question={question}
+                  handleChat={handleChat}
+                  rewritten={false}
+                  key={question}
+                />
+              ))}
+            </Flex>
+          )}
+        </>
       )}
     </Flex>
   );
