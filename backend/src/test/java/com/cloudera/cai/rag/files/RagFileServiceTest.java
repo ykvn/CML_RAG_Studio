@@ -394,7 +394,6 @@ class RagFileServiceTest {
   void saveRagFile_replacesExistingDocumentWithSameFilename() {
     var repo = RagFileRepository.createNull();
     var dsRepo = RagDataSourceRepository.createNull();
-    var idGenerator = IdGenerator.createNull(ONE_ID, TWO_ID);
     long dataSourceId = TestData.createTestDataSource(dsRepo);
 
     String filename = "replace-me.pdf";
@@ -403,10 +402,10 @@ class RagFileServiceTest {
         TestData.createTestDocument(
             dataSourceId, firstDocumentId, filename, repo, 100L, "actor-crn");
 
-    // Create service with our components
+    // Create service sharing the same repository as this test
     RagFileService service =
         new RagFileService(
-            idGenerator,
+            IdGenerator.createNull("new-document-id"),
             repo,
             RagFileUploader.createNull(),
             RagFileIndexReconciler.createNull(),
@@ -421,20 +420,20 @@ class RagFileServiceTest {
         new MockMultipartFile("test-file", filename, "application/pdf", bytes);
 
     // Upload the same filename again
-    RagDocumentMetadata result = service.saveRagFile(mockMultipartFile, dataSourceId, "actor-crn");
+    RagDocumentMetadata result =
+        service.saveRagFile(mockMultipartFile, dataSourceId, "actor-crn").getFirst();
 
-    // Verify the new document was created with a new ID
+    // Verify the new document was created with a new documentId
     assertThat(result.documentId()).isNotEqualTo(firstDocumentId);
+    assertThat(result.documentId()).isEqualTo("new-document-id");
     assertThat(result.fileName()).isEqualTo(filename);
 
-    // Verify the existing document was marked as deleted
-    RagDocument existingDoc = repo.findDocumentByDocumentId(firstDocumentId);
-    // Note: The existing doc should now be marked as deleted (deleted = true)
-    // The findDocumentByDocumentId method filters out deleted documents, so we
-    // need to check via getRagDocuments which also filters deleted
-    List<RagDocument> allDocs = repo.getRagDocuments(dataSourceId);
-    assertThat(allDocs).hasSize(1); // Only the new document should be visible
-    assertThat(allDocs.get(0).filename()).isEqualTo(filename);
-    assertThat(allDocs.get(0).documentId()).isEqualTo(result.documentId());
+    // The existing document should be soft-deleted, so only the new document
+    // is visible via getRagDocuments (which filters out deleted rows)
+    List<Types.RagDocument> allDocs = repo.getRagDocuments(dataSourceId);
+    assertThat(allDocs).hasSize(1);
+    assertThat(allDocs.getFirst().filename()).isEqualTo(filename);
+    assertThat(allDocs.getFirst().documentId()).isEqualTo("new-document-id");
+    assertThat(allDocs.getFirst().id()).isNotEqualTo(firstId);
   }
 }
