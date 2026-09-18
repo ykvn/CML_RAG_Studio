@@ -186,11 +186,11 @@ def _process_single_page(
         "model": model,
         "messages": [{"role": "user", "content": content_payload}],
         "stream": True,
-        "max_tokens": MAX_OUTPUT_TOKENS,
+        # "max_tokens": MAX_OUTPUT_TOKENS,
         # NOTE: `context_window` is a generic config hint some gateways inspect;
         # it is NOT relied on to bound output, since `max_tokens` + the stream
         # char cap below are the enforcement layer.
-        "context_window": 32768,
+        # "context_window": 32768,
     }
     label = f"page {page_number}/{total_pages}"
     
