@@ -52,8 +52,10 @@ import time
 import urllib.parse
 import httpx
 
-AUTH_URL = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v1/auth"
-DOWNLOAD_URL_TEMPLATE = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v2/nodes/{node_id}/versions/{version_number}/content"
+# AUTH_URL = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v1/auth" #DEV
+# DOWNLOAD_URL_TEMPLATE = "http://contentecmdev.hq.bni.co.id/otcs/cs.exe/api/v2/nodes/{node_id}/versions/{version_number}/content" #DEV
+AUTH_URL = "https://digicm.bni.co.id/otcs/cs.exe/api/v1/auth" #PROD
+DOWNLOAD_URL_TEMPLATE = "https://digicm.bni.co.id/otcs/cs.exe/api/v2/nodes/{node_id}/versions/{version_number}/content" #PROD
 UPLOAD_URL_TEMPLATE = "https://rag.cai.apps.dataservices.bni.co.id/api/v1/rag/dataSources/{dataSourceId}/files"
 
 
