@@ -79,6 +79,15 @@ def databases_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> st
 
 
 @pytest.fixture(autouse=True)
+def docling_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> str:
+    """Isolate the shared, document-scoped Docling OCR cache per test."""
+    cache_dir: str = str(tmp_path / "docling_cache")
+    monkeypatch.setenv("DOCLING_CACHE_DIR", cache_dir)
+    os.makedirs(cache_dir, exist_ok=True)
+    return cache_dir
+
+
+@pytest.fixture(autouse=True)
 def use_local_storage(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("S3_RAG_DOCUMENT_BUCKET", "")
 

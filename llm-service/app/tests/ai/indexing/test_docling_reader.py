@@ -1,5 +1,7 @@
 import shutil
 import subprocess
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional
@@ -9,7 +11,6 @@ from llama_index.core.node_parser import SentenceSplitter
 
 from app.ai.indexing.base import BaseTextIndexer
 from app.ai.indexing.readers import docling_reader as dr
-from app.ai.indexing.readers.base_reader import ChunksResult
 from app.ai.indexing.readers.docling_reader import DoclingReader
 from app.ai.indexing.readers.pdf import PDFReader
 from app.ai.indexing.readers.pptx import PptxReader
@@ -297,11 +298,11 @@ def test_load_chunks_qwen_not_used_for_html(
     )
     docling_called: list[Path] = []
 
-    def fake_docling(fp: Path) -> ChunksResult:
+    def fake_docling(fp: Path) -> list[tuple[int, Optional[int], str]]:
         docling_called.append(fp)
-        return ChunksResult([])
+        return []
 
-    monkeypatch.setattr(DoclingReader, "_load_chunks_docling", fake_docling)
+    monkeypatch.setattr(DoclingReader, "_convert_docling_items", fake_docling)
 
     html = tmp_path / "page.html"
     html.write_bytes(b"<html><body>hello</body></html>")
@@ -312,3 +313,116 @@ def test_load_chunks_qwen_not_used_for_html(
     assert ocr_called == []
     assert docling_called == [html]
     assert result.chunks == []
+
+
+# --- shared, document-scoped OCR cache --------------------------------------
+
+
+def test_load_chunks_reuses_cache_for_same_document(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    ocr_calls: list[Path] = []
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: (ocr_calls.append(Path(pdf_path)) or [(1, "Cached text.")]),
+    )
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"same-content")
+
+    first = make_reader().load_chunks(pdf)
+    second = make_reader().load_chunks(pdf)
+
+    assert len(ocr_calls) == 1
+    assert [c.text for c in first.chunks] == [c.text for c in second.chunks]
+    assert second.chunks[0].metadata["document_id"] == "doc-1"
+
+
+def test_load_chunks_recomputes_cache_when_content_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    ocr_calls: list[Path] = []
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: (ocr_calls.append(Path(pdf_path)) or [(1, "Text.")]),
+    )
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"version-1")
+    make_reader().load_chunks(pdf)
+    pdf.write_bytes(b"version-2")
+    make_reader().load_chunks(pdf)
+
+    assert len(ocr_calls) == 2
+
+
+def test_load_chunks_serializes_ocr_across_separate_downloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The embedding and summarization paths download the same document into two
+    # different temp dirs; the document-scoped lock must still serialize OCR.
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    ocr_calls: list[Path] = []
+
+    def slow_ocr(pdf_path: Path) -> list[tuple[int, str]]:
+        ocr_calls.append(Path(pdf_path))
+        time.sleep(0.25)
+        return [(1, "Shared OCR text.")]
+
+    monkeypatch.setattr(dr, "ocr_pdf", slow_ocr)
+
+    downloads: list[tuple[DoclingReader, Path]] = []
+    for name in ("embedding", "summarization"):
+        pdf = tmp_path / name / "doc.pdf"
+        pdf.parent.mkdir(parents=True, exist_ok=True)
+        pdf.write_bytes(b"identical-bytes")
+        downloads.append((make_reader(), pdf))
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(reader.load_chunks, pdf) for reader, pdf in downloads
+        ]
+        results = [future.result() for future in futures]
+
+    assert len(ocr_calls) == 1
+    assert all(result.chunks for result in results)
+
+
+def test_load_chunks_cache_is_independent_of_consumer_splitter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A cache written by one consumer must be re-chunked by the other, since the
+    # embedding path uses 512-token chunks and summarization uses 2048.
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    ocr_calls: list[Path] = []
+    long_text = " ".join(f"Sentence number {i}." for i in range(400))
+    monkeypatch.setattr(
+        dr,
+        "ocr_pdf",
+        lambda pdf_path: (ocr_calls.append(Path(pdf_path)) or [(1, long_text)]),
+    )
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"data")
+
+    embedding_reader = DoclingReader(
+        splitter=SentenceSplitter(chunk_size=64, chunk_overlap=0),
+        document_id="shared-doc",
+        data_source_id=1,
+    )
+    summary_reader = DoclingReader(
+        splitter=SentenceSplitter(chunk_size=2048, chunk_overlap=0),
+        document_id="shared-doc",
+        data_source_id=1,
+    )
+
+    embedded = embedding_reader.load_chunks(pdf)
+    summarized = summary_reader.load_chunks(pdf)
+
+    assert len(ocr_calls) == 1
+    assert len(summarized.chunks) < len(embedded.chunks)
+    assert all(c.metadata["document_id"] == "shared-doc" for c in summarized.chunks)

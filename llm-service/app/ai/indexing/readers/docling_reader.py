@@ -44,6 +44,7 @@ import subprocess
 import tempfile
 import uuid
 import fcntl
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, List, Optional
@@ -63,6 +64,59 @@ from .qwen_ocr import ocr_pdf
 from ....config import settings
 
 logger = logging.getLogger(__name__)
+
+# --- Shared, document-scoped cache for the expensive parsing output ----------
+# The embedding-index and summarization code paths each download the document
+# into their *own* ephemeral temp directory, so the previous
+# ``file_path.with_suffix(".lock")`` produced a different lock (and cache) file
+# per path. The two runs therefore never contended on the same lock and the
+# heavy OCR/conversion executed twice. Cache and lock are now keyed by
+# ``document_id`` inside a globally shared directory so both paths serialize on
+# the same lock and reuse a single result.
+DOCLING_CACHE_DIR_ENV = "DOCLING_CACHE_DIR"
+DEFAULT_DOCLING_CACHE_DIR = Path("/home/cdsw/.custom_tmp")
+_CACHE_SCHEMA_VERSION = 2
+_PAYLOAD_QWEN_PAGES = "qwen_pages"
+_PAYLOAD_DOCLING_CHUNKS = "docling_chunks"
+
+
+def _cache_dir() -> Path:
+    """Directory holding the document-scoped lock/cache files.
+
+    Prefers the shared CML/CDSW temp directory (the same one ``main.py`` points
+    ``TMPDIR``/``TEMP``/``TMP`` at) and falls back to the process temp dir for
+    local dev / CI where ``/home/cdsw`` does not exist.
+    """
+    override = os.environ.get(DOCLING_CACHE_DIR_ENV)
+    if override:
+        cache_dir = Path(override)
+    elif DEFAULT_DOCLING_CACHE_DIR.is_dir():
+        cache_dir = DEFAULT_DOCLING_CACHE_DIR
+    else:
+        cache_dir = Path(tempfile.gettempdir()) / "rag_docling_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
+
+
+def _cache_stem(document_id: str) -> str:
+    """Filesystem-safe cache/lock file stem for a document."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", document_id) or "document"
+
+
+def _file_fingerprint(file_path: Path) -> str:
+    """Content hash used to detect a changed document behind a reused id.
+
+    Content (not mtime) is used because every request re-downloads the document
+    into a fresh temp file, so mtime and inode are not stable across requests.
+    """
+    digest = hashlib.sha256()
+    size = 0
+    with open(file_path, "rb") as f:
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(block)
+            size += len(block)
+    return f"sha256:{digest.hexdigest()}:{size}"
+
 
 # Offline Model Paths inside CDSW Environment
 DOCLING_ARTIFACTS_PATH = Path("/home/cdsw/llm-service/models/docling_models")
@@ -248,56 +302,159 @@ class DoclingReader(BaseReader):
         return pdf_path, temp_dir
 
     def load_chunks(self, file_path: Path) -> ChunksResult:
-        # Define cache and lock file paths next to the original document
-        cache_file = file_path.with_suffix(".chunks.json")
-        lock_file = file_path.with_suffix(".lock")
+        # Cache and lock are scoped to the document_id inside a globally shared
+        # directory -- *not* next to the downloaded file. The embedding-index and
+        # summarization code paths each download the document into their own
+        # ephemeral temp directory, so a path-based lock/cache produced two
+        # different lock files and let the expensive OCR run twice.
+        cache_dir = _cache_dir()
+        cache_stem = _cache_stem(self.document_id)
+        cache_file = cache_dir / f"{cache_stem}.chunks.json"
+        lock_file = cache_dir / f"{cache_stem}.lock"
 
-        # Open (or create) the lock file
-        with open(lock_file, "w") as lf:
-            # 1. Grab an exclusive lock. If another thread is already processing this file,
-            #    this thread will pause and wait here until the lock is released.
+        engine = self._engine_name(file_path)
+        fingerprint = _file_fingerprint(file_path)
+
+        # Open (or create) the lock file and grab an exclusive lock. If another
+        # request is already processing this document, we block here until it
+        # finishes and releases the lock.
+        with open(lock_file, "a") as lf:
             fcntl.flock(lf, fcntl.LOCK_EX)
-            
             try:
-                # 2. Check if the cache was created while we were waiting
-                if cache_file.exists():
-                    logger.info(f"Loading cached OCR chunks for {file_path.name}")
-                    with open(cache_file, "r") as f:
-                        data = json.load(f)
-                        # Reconstruct LlamaIndex TextNodes from the JSON dictionaries
-                        chunks = [TextNode.from_dict(d) for d in data]
-                    return ChunksResult(chunks)
-
-                # 3. If no cache exists, run the heavy OCR logic
-                if (
-                    settings.enhanced_pdf_engine == "qwen"
-                    and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
-                ):
-                    logger.info("OCR engine for %s: Qwen (Qwen3.8-27B-ocr)", file_path.name)
-                    result = self._load_chunks_qwen(file_path)
+                # 1. Check if the cache was created while we were waiting.
+                payload = self._read_cached_payload(
+                    cache_file, engine=engine, fingerprint=fingerprint
+                )
+                if payload is not None:
+                    logger.info("Loading cached OCR chunks for %s", file_path.name)
                 else:
-                    logger.info("OCR engine for %s: Docling (EasyOCR)", file_path.name)
-                    result = self._load_chunks_docling(file_path)
-
-                # 4. Save the processed chunks to the JSON cache for the next task
-                try:
-                    with open(cache_file, "w") as f:
-                        json.dump([chunk.to_dict() for chunk in result.chunks], f)
-                except Exception as e:
-                    logger.warning(f"Failed to write cache file for {file_path.name}: {e}")
-
-                return result
-                
+                    # 2. Run the heavy OCR/conversion and persist the result so
+                    #    the next request (embedding or summarization) reuses it.
+                    payload = self._extract_payload(file_path, engine)
+                    self._write_cached_payload(
+                        cache_file,
+                        engine=engine,
+                        fingerprint=fingerprint,
+                        payload=payload,
+                    )
             finally:
-                # 5. Release the lock so the waiting task can proceed and read the cache
+                # 3. Release the lock so the waiting request can read the cache.
                 fcntl.flock(lf, fcntl.LOCK_UN)
 
-    def _load_chunks_qwen(self, file_path: Path) -> ChunksResult:
-        document = Document()
-        document.id_ = self.document_id
-        self._add_document_metadata(document, file_path)
-        parent = document.as_related_node_info()
+        # 4. Re-chunk outside the lock. Chunking depends on this reader's
+        #    splitter (e.g. 512 for embedding vs 2048 for summarization), so the
+        #    cached payload stores splitter-independent text and every consumer
+        #    splits it with its own splitter.
+        return self._chunks_from_payload(file_path, payload)
 
+    @staticmethod
+    def _engine_name(file_path: Path) -> str:
+        """Name of the OCR/conversion engine used for ``file_path``."""
+        if (
+            settings.enhanced_pdf_engine == "qwen"
+            and file_path.suffix.lower() in (".pdf", ".pptx", ".pptm")
+        ):
+            return "qwen"
+        return "docling"
+
+    def _extract_payload(self, file_path: Path, engine: str) -> dict[str, Any]:
+        """Run the expensive OCR/conversion and return a cacheable payload.
+
+        The payload deliberately holds raw text (not TextNodes), so it does not
+        depend on the consumer's splitter and can be shared between the embedding
+        and summarization code paths.
+        """
+        if engine == "qwen":
+            logger.info("OCR engine for %s: Qwen (Qwen3.8-27B-ocr)", file_path.name)
+            return {
+                "kind": _PAYLOAD_QWEN_PAGES,
+                "items": [
+                    [page_number, text]
+                    for page_number, text in self._ocr_qwen_pages(file_path)
+                ],
+            }
+
+        logger.info("OCR engine for %s: Docling (EasyOCR)", file_path.name)
+        return {
+            "kind": _PAYLOAD_DOCLING_CHUNKS,
+            "items": [
+                [chunk_number, page_number, text]
+                for chunk_number, page_number, text in self._convert_docling_items(
+                    file_path
+                )
+            ],
+        }
+
+    def _read_cached_payload(
+        self, cache_file: Path, *, engine: str, fingerprint: str
+    ) -> Optional[dict[str, Any]]:
+        """Return the cached payload, or ``None`` when there is no valid cache."""
+        if not cache_file.exists():
+            return None
+
+        try:
+            with open(cache_file, "r") as f:
+                record = json.load(f)
+        except (OSError, ValueError) as e:
+            logger.warning("Ignoring unreadable chunk cache %s: %s", cache_file, e)
+            return None
+
+        if (
+            isinstance(record, dict)
+            and record.get("schema_version") == _CACHE_SCHEMA_VERSION
+            and record.get("engine") == engine
+            and record.get("fingerprint") == fingerprint
+            and isinstance(record.get("payload"), dict)
+        ):
+            return record["payload"]
+
+        logger.info(
+            "Chunk cache for %s is stale; re-running OCR/conversion", cache_file.name
+        )
+        return None
+
+    def _write_cached_payload(
+        self,
+        cache_file: Path,
+        *,
+        engine: str,
+        fingerprint: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Atomically persist the payload so readers never see a partial file."""
+        record = {
+            "schema_version": _CACHE_SCHEMA_VERSION,
+            "document_id": self.document_id,
+            "engine": engine,
+            "fingerprint": fingerprint,
+            "payload": payload,
+        }
+        tmp_file = cache_file.with_name(cache_file.name + ".tmp")
+        try:
+            with open(tmp_file, "w") as f:
+                json.dump(record, f)
+            os.replace(tmp_file, cache_file)
+        except OSError as e:
+            logger.warning("Failed to write cache file for %s: %s", cache_file.name, e)
+            try:
+                tmp_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _chunks_from_payload(
+        self, file_path: Path, payload: dict[str, Any]
+    ) -> ChunksResult:
+        """Rebuild TextNodes from a cached payload using this reader's splitter."""
+        kind = payload.get("kind")
+        items = payload.get("items") or []
+        if kind == _PAYLOAD_QWEN_PAGES:
+            return self._chunks_from_qwen_pages(file_path, items)
+        if kind == _PAYLOAD_DOCLING_CHUNKS:
+            return self._chunks_from_docling_items(file_path, items)
+        raise ValueError(f"Unknown chunk cache payload kind: {kind!r}")
+
+    def _ocr_qwen_pages(self, file_path: Path) -> list[tuple[int, str]]:
+        """OCR the document with the Qwen multimodal model, page by page."""
         # PPTX/PPTM slides need to be rendered to PDF (via LibreOffice) so that the
         # Qwen OCR model can see the slide content.
         is_slides = file_path.suffix.lower() in {".pptx", ".pptm"}
@@ -308,15 +465,23 @@ class DoclingReader(BaseReader):
 
         try:
             # Page OCR via the Qwen3.8-27B-ocr multimodal model.
-            pages = ocr_pdf(doc_path)
+            return ocr_pdf(doc_path)
         finally:
             if temp_dir is not None:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
+    def _chunks_from_qwen_pages(
+        self, file_path: Path, items: list[Any]
+    ) -> ChunksResult:
+        document = Document()
+        document.id_ = self.document_id
+        self._add_document_metadata(document, file_path)
+        parent = document.as_related_node_info()
+
         converted_chunks: List[TextNode] = []
         chunk_number = 0
 
-        for page_number, page_text in pages:
+        for page_number, page_text in items:
             normalized_text = clean_ocr_kerning(page_text)
             if not normalized_text.strip():
                 logger.warning(f"Skipping empty OCR page {page_number}")
@@ -326,9 +491,7 @@ class DoclingReader(BaseReader):
             page_document.id_ = self.document_id
             self._add_document_metadata(page_document, file_path)
 
-            for i, node in enumerate(
-                self.splitter.get_nodes_from_documents([page_document])
-            ):
+            for node in self.splitter.get_nodes_from_documents([page_document]):
                 assert isinstance(node, TextNode)
                 node.metadata["page_number"] = page_number
                 node.metadata["file_name"] = document.metadata["file_name"]
@@ -343,12 +506,16 @@ class DoclingReader(BaseReader):
 
         return ChunksResult(converted_chunks)
 
-    def _load_chunks_docling(self, file_path: Path) -> ChunksResult:
-        document = Document()
-        document.id_ = self.document_id
-        self._add_document_metadata(document, file_path)
-        parent = document.as_related_node_info()
+    def _convert_docling_items(
+        self, file_path: Path
+    ) -> list[tuple[int, Optional[int], str]]:
+        """Run Docling conversion + chunking and return cacheable items.
 
+        Each item is ``(chunk_number, page_number, text)``. The chunking here is
+        performed by Docling's HybridChunker and therefore does not depend on the
+        consumer's ``self.splitter``, so the result is safe to share between the
+        embedding and summarization code paths.
+        """
         # PPTX/PPTM slides need to be rendered to PDF (via LibreOffice) so that the
         # Docling OCR pipeline can see text embedded in slide images. Native PDFs are
         # processed directly.
@@ -409,10 +576,10 @@ class DoclingReader(BaseReader):
         )
         chunky_chunks = chunker.chunk(docling_doc.document)
 
-        converted_chunks: List[TextNode] = []
+        items: list[tuple[int, Optional[int], str]] = []
 
         for i, chunky_chunk in enumerate(chunky_chunks):
-            page_number: int = 0
+            page_number: Optional[int] = 0
             if not hasattr(chunky_chunk.meta, "doc_items"):
                 continue
 
@@ -434,13 +601,28 @@ class DoclingReader(BaseReader):
             for item in chunky_chunk.meta.doc_items:
                 page_number = item.prov[0].page_no if item.prov else None
 
-            node = TextNode(text=normalized_text)
+            items.append((i, page_number, normalized_text))
+
+        return items
+
+    def _chunks_from_docling_items(
+        self, file_path: Path, items: list[Any]
+    ) -> ChunksResult:
+        document = Document()
+        document.id_ = self.document_id
+        self._add_document_metadata(document, file_path)
+        parent = document.as_related_node_info()
+
+        converted_chunks: List[TextNode] = []
+
+        for chunk_number, page_number, text in items:
+            node = TextNode(text=text)
             if page_number:
                 node.metadata["page_number"] = page_number
             node.metadata["file_name"] = document.metadata["file_name"]
             node.metadata["document_id"] = document.metadata["document_id"]
             node.metadata["data_source_id"] = document.metadata["data_source_id"]
-            node.metadata["chunk_number"] = i
+            node.metadata["chunk_number"] = chunk_number
             node.metadata["chunk_format"] = "markdown"
             node.relationships.update({NodeRelationship.SOURCE: parent})
 
