@@ -161,11 +161,11 @@ class OpenAiModelProvider(_ModelProvider):
                 name="Qwen3.8-27B-low",
                 tool_calling_supported=True,
             ),
-            #ModelResponse(
-            #    model_id="Qwen3.8-27B-medium",
-            #    name="Qwen3.8-27B-medium",
-            #    tool_calling_supported=True,
-            #),
+            ModelResponse(
+                model_id="Qwen3.8-27B-medium",
+                name="Qwen3.8-27B-medium",
+                tool_calling_supported=True,
+            ),
             #ModelResponse(
             #    model_id="Qwen3.8-27B-xhigh",
             #    name="Qwen3.8-27B-xhigh",
