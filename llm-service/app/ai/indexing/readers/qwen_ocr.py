@@ -217,7 +217,7 @@ def ocr_pdf(
     results_dict = {}
     
     # Process up to 10 pages concurrently to maximize H200 throughput without overwhelming gateway timeouts
-    max_workers = min(5, total_pages) if total_pages > 0 else 1
+    max_workers = min(2, total_pages) if total_pages > 0 else 1
 
     with httpx.Client(
         verify=False, timeout=httpx.Timeout(OCR_TIMEOUT, connect=10.0)
