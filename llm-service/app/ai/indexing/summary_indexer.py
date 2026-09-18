@@ -83,7 +83,7 @@ from ...services.models.providers import get_provider_class
 
 logger = logging.getLogger(__name__)
 
-SUMMARY_PROMPT = "Summarize the contents into less than 100 words."
+SUMMARY_PROMPT = "Buatlah ringkasan dari konten tersebut dalam kurang dari 100 kata dalam Bahasa Indonesia."
 
 # Since we don't use anything fancy to store the summaries, it's possible that two threads
 # try to do a write operation at the same time and we end up with a race condition.
