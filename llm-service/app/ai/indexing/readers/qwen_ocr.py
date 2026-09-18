@@ -53,6 +53,10 @@ logger = logging.getLogger(__name__)
 QWEN_OCR_MODEL = "Qwen3.8-27B-ocr"
 OCR_DPI = 150
 OCR_TIMEOUT = 600.0
+MAX_OUTPUT_TOKENS = 4096        # server-side generation cap (also sent in payload)
+MAX_OCR_PAGE_CHARS = 24000      # client-side backstop: terminates stream on hallucinated
+                                 # org-chart loops (e.g. repeating names) independent of
+                                 # whether the gateway honors `max_tokens`.
 
 # One page is sent per request, so no PAGE markers are needed. Crucially this
 # prompt forbids summarizing/truncating tables or lists, which previously caused
@@ -140,6 +144,15 @@ def _stream_ocr(
             if content:
                 content_text += content
             finish_reason = choice.get("finish_reason") or finish_reason
+            if len(content_text) >= MAX_OCR_PAGE_CHARS:
+                logger.warning(
+                    "Qwen OCR %s hit the %d-char output cap (possible repetition loop "
+                    "or pathological output); terminating the stream to avoid an "
+                    "indefinite hang. finish_reason=%s, received=%d chars.",
+                    label, MAX_OCR_PAGE_CHARS,
+                    finish_reason or "none", len(content_text),
+                )
+                break
 
     if finish_reason == "length":
         logger.warning(
@@ -173,6 +186,10 @@ def _process_single_page(
         "model": model,
         "messages": [{"role": "user", "content": content_payload}],
         "stream": True,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        # NOTE: `context_window` is a generic config hint some gateways inspect;
+        # it is NOT relied on to bound output, since `max_tokens` + the stream
+        # char cap below are the enforcement layer.
         "context_window": 32768,
     }
     label = f"page {page_number}/{total_pages}"
