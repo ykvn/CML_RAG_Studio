@@ -53,6 +53,10 @@ logger = logging.getLogger(__name__)
 QWEN_OCR_MODEL = "Qwen3.8-27B-ocr"
 OCR_DPI = 150
 OCR_TIMEOUT = 600.0
+MAX_OCR_PAGE_CHARS = 12000  # client-side backstop: terminates stream on hallucinated org-chart
+                             # loops (e.g. repeating names) and keeps garbage low (~3k tokens).
+                             # 12k chars ≈ 2.4× the largest legitimate page seen in logs, so
+                             # real dense table/list pages are preserved.
 
 # One page is sent per request, so no PAGE markers are needed. Crucially this
 # prompt forbids summarizing/truncating tables or lists, which previously caused
@@ -141,6 +145,15 @@ def _stream_ocr(
             if content:
                 content_text += content
             finish_reason = choice.get("finish_reason") or finish_reason
+            if len(content_text) >= MAX_OCR_PAGE_CHARS:
+                logger.warning(
+                    "Qwen OCR %s hit the %d-char output cap (possible repetition loop "
+                    "or pathological output); terminating the stream to avoid an "
+                    "indefinite hang. finish_reason=%s, received=%d chars.",
+                    label, MAX_OCR_PAGE_CHARS,
+                    finish_reason or "none", len(content_text),
+                )
+                break
 
     if finish_reason == "length":
         logger.warning(
