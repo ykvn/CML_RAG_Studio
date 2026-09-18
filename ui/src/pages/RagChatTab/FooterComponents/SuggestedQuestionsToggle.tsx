@@ -36,8 +36,8 @@
  * DATA.
  */
 
-import { Button, Tooltip } from "antd";
-import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+import { DownOutlined } from "@ant-design/icons";
 import { cdlBlue600 } from "src/cuix/variables.ts";
 
 /**
@@ -52,29 +52,27 @@ export const SuggestedQuestionsToggle = ({
   collapsed: boolean;
   onToggle: () => void;
 }) => {
-  const label = collapsed
-    ? "Show suggested follow-up questions"
-    : "Minimize suggested follow-up questions";
-
   return (
-    <Tooltip title={label}>
-      <Button
-        type="text"
-        size="small"
-        aria-label={label}
-        aria-expanded={!collapsed}
-        data-testid="suggested-questions-toggle"
-        style={{ height: "auto", padding: 0 }}
-        icon={
-          collapsed ? (
-            <PlusOutlined style={{ color: cdlBlue600 }} />
-          ) : (
-            <MinusOutlined style={{ color: cdlBlue600 }} />
-          )
-        }
-        onClick={onToggle}
-      />
-    </Tooltip>
+    <Button
+      type="text"
+      size="small"
+      aria-label={
+        collapsed
+          ? "Show suggested follow-up questions"
+          : "Hide suggested follow-up questions"
+      }
+      aria-expanded={!collapsed}
+      data-testid="suggested-questions-toggle"
+      style={{ height: "auto", padding: 0 }}
+      icon={
+        // Points down ("v") when the questions are visible, and right when hidden
+        <DownOutlined
+          rotate={collapsed ? -90 : 0}
+          style={{ color: cdlBlue600 }}
+        />
+      }
+      onClick={onToggle}
+    />
   );
 };
 

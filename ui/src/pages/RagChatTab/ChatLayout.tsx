@@ -83,6 +83,8 @@ function ChatLayout() {
     useState<AbortController>();
   // ADDED: Initialize the followups state here
   const [streamedFollowups, setStreamedFollowups] = useState<string[]>([]);
+  // Question chosen from a suggestion, waiting to be dropped into the chat input
+  const [draftQuestion, setDraftQuestion] = useState("");
   const {
     status: chatHistoryStatus,
     data: chatHistory,
@@ -126,6 +128,7 @@ function ChatLayout() {
         ],
         // ADDED: Pass the new state into the context provider
         streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
+        draftQuestionState: [draftQuestion, setDraftQuestion],
         dataSourceSize,
         dataSourcesQuery: {
           dataSources: dataSources ?? [],

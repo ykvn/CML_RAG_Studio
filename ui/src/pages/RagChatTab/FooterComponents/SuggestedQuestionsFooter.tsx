@@ -45,17 +45,17 @@ import SuggestedQuestionsToggle from "pages/RagChatTab/FooterComponents/Suggeste
 
 export const SuggestedQuestionButton = ({
   question,
-  handleChat,
+  onSelectQuestion,
   rewritten,
 }: {
   question: string;
-  handleChat: (input: string) => void;
+  onSelectQuestion: (question: string) => void;
   rewritten?: boolean;
 }) => {
   return (
     <Tag
       onClick={() => {
-        handleChat(question);
+        onSelectQuestion(question);
       }}
       icon={
         rewritten ? (
@@ -89,13 +89,17 @@ export const SuggestedQuestionButton = ({
 
 const SuggestedQuestionsFooter = ({
   isLoading,
-  handleChat,
+  onSelectQuestion,
   questions,
   condensedQuestion,
   error,
 }: {
   isLoading: boolean;
-  handleChat: (input: string) => void;
+  /**
+   * Called with the chosen question. The question is placed in the chat input
+   * so it can be edited before being sent.
+   */
+  onSelectQuestion: (question: string) => void;
   questions: string[];
   condensedQuestion?: string;
   error?: Error | null;
@@ -107,7 +111,7 @@ const SuggestedQuestionsFooter = ({
       {condensedQuestion ? (
         <SuggestedQuestionButton
           question={condensedQuestion}
-          handleChat={handleChat}
+          onSelectQuestion={onSelectQuestion}
           rewritten={true}
         />
       ) : null}
@@ -138,7 +142,7 @@ const SuggestedQuestionsFooter = ({
               {questions.slice(0, 5).map((question) => (
                 <SuggestedQuestionButton
                   question={question}
-                  handleChat={handleChat}
+                  onSelectQuestion={onSelectQuestion}
                   rewritten={false}
                   key={question}
                 />

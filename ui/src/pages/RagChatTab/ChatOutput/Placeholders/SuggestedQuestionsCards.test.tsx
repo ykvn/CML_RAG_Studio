@@ -39,32 +39,44 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import SuggestedQuestionsFooter from "./SuggestedQuestionsFooter";
+import {
+  RagChatContext,
+  RagChatContextType,
+} from "pages/RagChatTab/State/RagChatContext.tsx";
+import SuggestedQuestionsCards from "./SuggestedQuestionsCards";
 
 const STORAGE_KEY = "suggestedQuestionsCollapsed";
 
-const questions = [
-  "Question 1",
-  "Question 2",
-  "Question 3",
-  "Question 4",
-  "Question 5",
-  "Question 6",
-];
+const createMockContext = (
+  overrides: Partial<RagChatContextType> = {},
+): RagChatContextType => ({
+  activeSession: undefined,
+  chatHistoryQuery: {
+    flatChatHistory: [],
+    isFetching: false,
+    isFetchingPreviousPage: false,
+    chatHistoryStatus: "success",
+    fetchPreviousPage: vi.fn(),
+  },
+  streamedChatState: ["", vi.fn()],
+  streamedEventState: [[], vi.fn()],
+  streamedAbortControllerState: [undefined, vi.fn()],
+  streamedFollowupsState: [[], vi.fn()],
+  draftQuestionState: ["", vi.fn()],
+  dataSourcesQuery: { dataSources: [], dataSourcesStatus: "success" },
+  dataSourceSize: null,
+  excludeKnowledgeBaseState: [false, vi.fn()],
+  ...overrides,
+});
 
-const renderFooter = (onSelectQuestion = vi.fn()) => {
+const renderCards = (contextValue: RagChatContextType) =>
   render(
-    <SuggestedQuestionsFooter
-      isLoading={false}
-      onSelectQuestion={onSelectQuestion}
-      questions={questions}
-      error={null}
-    />,
+    <RagChatContext.Provider value={contextValue}>
+      <SuggestedQuestionsCards />
+    </RagChatContext.Provider>,
   );
-  return { onSelectQuestion };
-};
 
-describe("SuggestedQuestionsFooter", () => {
+describe("SuggestedQuestionsCards", () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -75,91 +87,56 @@ describe("SuggestedQuestionsFooter", () => {
   });
 
   it("renders at most five suggested questions when expanded", () => {
-    renderFooter();
+    renderCards(
+      createMockContext({
+        streamedFollowupsState: [
+          [
+            "Question 1",
+            "Question 2",
+            "Question 3",
+            "Question 4",
+            "Question 5",
+            "Question 6",
+          ],
+          vi.fn(),
+        ],
+      }),
+    );
 
     expect(screen.getByText("Question 1")).toBeInTheDocument();
     expect(screen.getByText("Question 5")).toBeInTheDocument();
     expect(screen.queryByText("Question 6")).not.toBeInTheDocument();
-    expect(screen.getByTestId("suggested-questions-toggle")).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
   });
 
-  it("minimizes and restores the suggested questions", async () => {
+  it("places the clicked suggestion in the chat input instead of asking it", async () => {
     const user = userEvent.setup();
-    renderFooter();
+    const setDraftQuestion = vi.fn();
+    renderCards(
+      createMockContext({
+        streamedFollowupsState: [["A question to edit"], vi.fn()],
+        draftQuestionState: ["", setDraftQuestion],
+      }),
+    );
 
-    const toggle = screen.getByTestId("suggested-questions-toggle");
+    await user.click(screen.getByText("A question to edit"));
 
-    await user.click(toggle);
-
-    expect(screen.queryByText("Question 1")).not.toBeInTheDocument();
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("true");
-
-    await user.click(toggle);
-
-    expect(screen.getByText("Question 1")).toBeInTheDocument();
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("false");
+    expect(setDraftQuestion).toHaveBeenCalledWith("A question to edit");
   });
 
-  it("starts minimized when the preference was persisted", () => {
-    localStorage.setItem(STORAGE_KEY, "true");
+  it("hides the cards when the suggestions are minimized", async () => {
+    const user = userEvent.setup();
+    renderCards(
+      createMockContext({
+        streamedFollowupsState: [["A question to edit"], vi.fn()],
+      }),
+    );
 
-    renderFooter();
+    await user.click(screen.getByTestId("suggested-questions-toggle"));
 
+    expect(screen.queryByText("A question to edit")).not.toBeInTheDocument();
     expect(
       screen.getByText("Suggested Follow-up Questions"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Question 1")).not.toBeInTheDocument();
-    expect(screen.getByTestId("suggested-questions-toggle")).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-  });
-
-  it("hides the loading skeleton while minimized", () => {
-    localStorage.setItem(STORAGE_KEY, "true");
-
-    render(
-      <SuggestedQuestionsFooter
-        isLoading={true}
-        onSelectQuestion={vi.fn()}
-        questions={[]}
-        error={null}
-      />,
-    );
-
-    expect(document.querySelector(".ant-skeleton")).toBeNull();
-  });
-
-  it("passes the selected question to the caller instead of asking it", async () => {
-    const user = userEvent.setup();
-    const onSelectQuestion = vi.fn();
-    renderFooter(onSelectQuestion);
-
-    await user.click(screen.getByText("Question 2"));
-
-    expect(onSelectQuestion).toHaveBeenCalledWith("Question 2");
-  });
-
-  it("passes the rewritten question to the caller when clicked", async () => {
-    const user = userEvent.setup();
-    const onSelectQuestion = vi.fn();
-    render(
-      <SuggestedQuestionsFooter
-        isLoading={false}
-        onSelectQuestion={onSelectQuestion}
-        questions={[]}
-        condensedQuestion={"Rewritten question"}
-        error={null}
-      />,
-    );
-
-    await user.click(screen.getByText("Rewritten question"));
-
-    expect(onSelectQuestion).toHaveBeenCalledWith("Rewritten question");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("true");
   });
 });

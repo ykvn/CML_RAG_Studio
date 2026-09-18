@@ -70,6 +70,12 @@ export interface RagChatContextType {
     Dispatch<SetStateAction<AbortController | undefined>>,
   ];
   streamedFollowupsState: [string[], Dispatch<SetStateAction<string[]>>];
+  /**
+   * Question picked from a suggested question (follow-ups or empty chat cards)
+   * that should be placed in the chat input so it can be edited before sending.
+   * Empty string means there is no pending question.
+   */
+  draftQuestionState: [string, Dispatch<SetStateAction<string>>];
   dataSourcesQuery: {
     dataSources: DataSourceType[];
     dataSourcesStatus?: "error" | "success" | "pending";
@@ -94,6 +100,7 @@ export const RagChatContext = createContext<RagChatContextType>({
   streamedEventState: [[], () => null],
   streamedAbortControllerState: [undefined, () => null],
   streamedFollowupsState: [[], () => null],
+  draftQuestionState: ["", () => null],
   dataSourcesQuery: { dataSources: [], dataSourcesStatus: undefined },
   dataSourceSize: null,
   excludeKnowledgeBaseState: [false, () => null],

@@ -109,10 +109,11 @@ const RagChatQueryInput = ({
       setStreamedAbortController,
     ],
     streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
+    draftQuestionState: [draftQuestion, setDraftQuestion],
   } = useContext(RagChatContext);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedDataSourceIds, setSelectedDataSourceIds] = useState<number[]>(
-    []
+    [],
   );
 
   const [userInput, setUserInput] = useState("");
@@ -151,10 +152,11 @@ const RagChatQueryInput = ({
   });
 
   // Robust <followups> parsing that handles tags split across chunk boundaries
-  const { onChunk, flush, reset: resetFollowups } = useFollowupsStreamParser(
-    setStreamedChat,
-    setStreamedFollowups,
-  );
+  const {
+    onChunk,
+    flush,
+    reset: resetFollowups,
+  } = useFollowupsStreamParser(setStreamedChat, setStreamedFollowups);
 
   const streamChatMutation = useStreamingChatMutation({
     onChunk,
@@ -175,7 +177,7 @@ const RagChatQueryInput = ({
   useEffect(() => {
     // Check if any modal is currently open
     const isModalOpen = document.querySelector(
-      ".ant-modal-root, .ant-modal-mask"
+      ".ant-modal-root, .ant-modal-mask",
     );
 
     if (inputRef.current && !isModalOpen) {
@@ -188,6 +190,16 @@ const RagChatQueryInput = ({
       setStreamedAbortController(undefined);
     }
   }, [streamChatMutation.isSuccess, setStreamedAbortController]);
+
+  useEffect(() => {
+    // A suggested question was picked: drop it into the input so the user can
+    // review/edit it before sending instead of asking it right away.
+    if (draftQuestion) {
+      setUserInput(draftQuestion);
+      setDraftQuestion("");
+      inputRef.current?.focus({ cursor: "end" });
+    }
+  }, [draftQuestion, setDraftQuestion]);
 
   useEffect(() => {
     if (activeSession?.inferenceModel) {
@@ -237,7 +249,7 @@ const RagChatQueryInput = ({
     setInferenceModel(modelId);
     if (activeSession) {
       const supportsToolCalling = llmModels.find(
-        (model) => model.model_id === modelId
+        (model) => model.model_id === modelId,
       )?.tool_calling_supported;
       updateSession.mutate({
         ...activeSession,
@@ -258,7 +270,7 @@ const RagChatQueryInput = ({
             questions={streamedFollowups}
             isLoading={false}
             error={null}
-            handleChat={handleChat}
+            onSelectQuestion={setDraftQuestion}
             condensedQuestion={
               flatChatHistory.length > 0
                 ? flatChatHistory[flatChatHistory.length - 1].condensed_question

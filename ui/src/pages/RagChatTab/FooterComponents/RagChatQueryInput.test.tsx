@@ -113,12 +113,16 @@ vi.mock("src/utils/useModal.ts", () => ({
 vi.mock(
   "pages/RagChatTab/FooterComponents/SuggestedQuestionsFooter.tsx",
   () => ({
-    default: ({ handleChat }: { handleChat: (query: string) => void }) => {
+    default: ({
+      onSelectQuestion,
+    }: {
+      onSelectQuestion: (query: string) => void;
+    }) => {
       return (
         <div data-testid="suggested-questions">
           <button
             onClick={() => {
-              handleChat("suggested question");
+              onSelectQuestion("suggested question");
             }}
           >
             Suggested Question
@@ -227,7 +231,8 @@ const createMockContext = (
   streamedEventState: [[], vi.fn()],
   streamedAbortControllerState: [undefined, vi.fn()],
   // ADDED: The missing property on the mock
-  streamedFollowupsState: [[], vi.fn()], 
+  streamedFollowupsState: [[], vi.fn()],
+  draftQuestionState: ["", vi.fn()],
   dataSourcesQuery: {
     dataSources: [],
     dataSourcesStatus: "success",
@@ -570,9 +575,11 @@ describe("RagChatQueryInput", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("handles suggested question clicks", async () => {
+    it("puts a suggested question into the chat input instead of asking it", async () => {
       const user = userEvent.setup();
+      const setDraftQuestion = vi.fn();
       const mockContext = createMockContext({
+        draftQuestionState: ["", setDraftQuestion],
         chatHistoryQuery: {
           flatChatHistory: [
             {
@@ -599,11 +606,19 @@ describe("RagChatQueryInput", () => {
       const suggestedButton = screen.getByText("Suggested Question");
       await user.click(suggestedButton);
 
-      expect(mockStreamingChatMutation.mutate).toHaveBeenCalledWith({
-        query: "suggested question",
-        session_id: 123,
-        configuration: { exclude_knowledge_base: false },
+      expect(setDraftQuestion).toHaveBeenCalledWith("suggested question");
+      expect(mockStreamingChatMutation.mutate).not.toHaveBeenCalled();
+    });
+
+    it("shows a pending suggested question in the chat input so it can be edited", () => {
+      const mockContext = createMockContext({
+        draftQuestionState: ["Suggested question to edit", vi.fn()],
       });
+      renderWithContext(mockContext);
+
+      expect(screen.getByPlaceholderText("Ask a question")).toHaveValue(
+        "Suggested question to edit",
+      );
     });
   });
 

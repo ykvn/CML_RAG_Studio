@@ -36,16 +36,9 @@
  * DATA.
  ******************************************************************************/
 
-import { Card, Flex, Skeleton, Typography } from "antd";
+import { Card, Flex, Typography } from "antd";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
 import { useContext } from "react";
-import {
-  createQueryConfiguration,
-  getOnEvent,
-  useStreamingChatMutation,
-} from "src/api/chatApi.ts";
-import useCreateSessionAndRedirect from "pages/RagChatTab/ChatOutput/hooks/useCreateSessionAndRedirect";
-import { useFollowupsStreamParser } from "src/hooks/useFollowupsStreamParser.ts";
 import { useSuggestedQuestionsCollapsed } from "src/hooks/useSuggestedQuestionsCollapsed.ts";
 import SuggestedQuestionsToggle from "pages/RagChatTab/FooterComponents/SuggestedQuestionsToggle.tsx";
 
@@ -83,51 +76,16 @@ const QuestionCard = ({
 
 const SuggestedQuestionsCards = () => {
   const {
-    activeSession,
-    excludeKnowledgeBaseState: [excludeKnowledgeBase],
-    streamedChatState: [, setStreamedChat],
-    streamedEventState: [, setStreamedEvent],
-    streamedAbortControllerState: [, setStreamedAbortController],
-    streamedFollowupsState: [streamedFollowups, setStreamedFollowups],
+    draftQuestionState: [, setDraftQuestion],
+    streamedFollowupsState: [streamedFollowups],
   } = useContext(RagChatContext);
-
-  const sessionId = activeSession?.id;
-
-  const createSessionAndRedirect = useCreateSessionAndRedirect();
-
-  const {
-    onChunk,
-    flush,
-    reset: resetFollowups,
-  } = useFollowupsStreamParser(setStreamedChat, setStreamedFollowups);
-
-  const { mutate: chatMutation, isPending: askRagIsPending } =
-    useStreamingChatMutation({
-      onChunk,
-      onEvent: getOnEvent(setStreamedEvent),
-      onSuccess: () => {
-        flush();
-        setStreamedChat("");
-      },
-      getController: (ctrl: AbortController) => {
-        setStreamedAbortController(ctrl);
-      },
-    });
 
   const { collapsed, toggleCollapsed } = useSuggestedQuestionsCollapsed();
 
-  const handleAskSample = (suggestedQuestion: string) => {
+  const handleSelectQuestion = (suggestedQuestion: string) => {
     if (suggestedQuestion.length > 0) {
-      resetFollowups();
-      if (sessionId) {
-        chatMutation({
-          query: suggestedQuestion,
-          session_id: sessionId,
-          configuration: createQueryConfiguration(excludeKnowledgeBase),
-        });
-      } else {
-        createSessionAndRedirect([], suggestedQuestion);
-      }
+      // Drop the question into the chat input so it can be edited before asking
+      setDraftQuestion(suggestedQuestion);
     }
   };
 
@@ -146,33 +104,16 @@ const SuggestedQuestionsCards = () => {
         />
       </Flex>
       {collapsed ? null : (
-        <>
-          {askRagIsPending ? (
-            <Flex gap={10} wrap="wrap">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton
-                  key={index}
-                  active
-                  style={{
-                    width: 178,
-                    padding: 0,
-                  }}
-                />
-              ))}
-            </Flex>
-          ) : (
-            <Flex gap={10} wrap="wrap" style={{ marginTop: 4 }}>
-              {streamedFollowups.slice(0, 5).map((question, index) => (
-                <QuestionCard
-                  question={question}
-                  index={index}
-                  key={index}
-                  onClick={handleAskSample}
-                />
-              ))}
-            </Flex>
-          )}
-        </>
+        <Flex gap={10} wrap="wrap" style={{ marginTop: 4 }}>
+          {streamedFollowups.slice(0, 5).map((question, index) => (
+            <QuestionCard
+              question={question}
+              index={index}
+              key={index}
+              onClick={handleSelectQuestion}
+            />
+          ))}
+        </Flex>
       )}
     </Flex>
   );
