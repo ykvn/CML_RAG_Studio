@@ -4,13 +4,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional
+from typing import Any, Optional
 
 import pytest
 from llama_index.core.node_parser import SentenceSplitter
 
 from app.ai.indexing.base import BaseTextIndexer
 from app.ai.indexing.readers import docling_reader as dr
+from app.ai.indexing.readers.base_reader import ChunksResult
 from app.ai.indexing.readers.docling_reader import DoclingReader
 from app.ai.indexing.readers.pdf import PDFReader
 from app.ai.indexing.readers.pptx import PptxReader
@@ -390,6 +391,47 @@ def test_load_chunks_serializes_ocr_across_separate_downloads(
 
     assert len(ocr_calls) == 1
     assert all(result.chunks for result in results)
+
+
+def test_load_chunks_chunks_while_holding_document_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Regression: chunking must run *inside* the document lock. Chunking uses
+    # LlamaIndex's SentenceSplitter, whose first call lazily loads NLTK's
+    # sentence tokenizer (process-global state that is not thread-safe).
+    # Releasing the lock before chunking let the embedding and summarization
+    # paths collide inside NLTK, raising an AttributeError and deadlocking the
+    # pipeline. Assert the order: lock -> chunk -> unlock.
+    monkeypatch.setenv("ENHANCED_PDF_ENGINE", "qwen")
+    monkeypatch.setattr(dr, "ocr_pdf", lambda pdf_path: [(1, "Some text.")])
+
+    events: list[str] = []
+    real_flock = dr.fcntl.flock
+
+    def spy_flock(fd: int, operation: int) -> None:
+        if operation == dr.fcntl.LOCK_EX:
+            events.append("lock")
+        elif operation == dr.fcntl.LOCK_UN:
+            events.append("unlock")
+        real_flock(fd, operation)
+
+    original_chunks_from_payload = DoclingReader._chunks_from_payload
+
+    def spy_chunks_from_payload(
+        self: DoclingReader, file_path: Path, payload: dict[str, Any]
+    ) -> ChunksResult:
+        events.append("chunk")
+        return original_chunks_from_payload(self, file_path, payload)
+
+    monkeypatch.setattr(dr.fcntl, "flock", spy_flock)
+    monkeypatch.setattr(DoclingReader, "_chunks_from_payload", spy_chunks_from_payload)
+
+    pdf = tmp_path / "doc.pdf"
+    pdf.write_bytes(b"data")
+
+    make_reader().load_chunks(pdf)
+
+    assert events == ["lock", "chunk", "unlock"]
 
 
 def test_load_chunks_cache_is_independent_of_consumer_splitter(

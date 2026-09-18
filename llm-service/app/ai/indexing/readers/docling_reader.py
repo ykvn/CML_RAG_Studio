@@ -337,15 +337,22 @@ class DoclingReader(BaseReader):
                         fingerprint=fingerprint,
                         payload=payload,
                     )
-            finally:
-                # 3. Release the lock so the waiting request can read the cache.
-                fcntl.flock(lf, fcntl.LOCK_UN)
 
-        # 4. Re-chunk outside the lock. Chunking depends on this reader's
-        #    splitter (e.g. 512 for embedding vs 2048 for summarization), so the
-        #    cached payload stores splitter-independent text and every consumer
-        #    splits it with its own splitter.
-        return self._chunks_from_payload(file_path, payload)
+                # 3. Re-chunk *while still holding the lock*. Chunking runs
+                #    through LlamaIndex's SentenceSplitter, which lazily loads
+                #    NLTK's sentence tokenizer on first use. That lazy load
+                #    mutates NLTK's process-global state and is *not* thread-safe:
+                #    when the embedding (512) and summarization (2048) paths
+                #    chunked this document concurrently they collided inside
+                #    NLTK, raising an AttributeError and deadlocking the pipeline.
+                #    Serializing the chunking under the same document lock
+                #    (chunking was previously done *after* LOCK_UN) removes the
+                #    race. The cached payload stores splitter-independent text, so
+                #    each consumer still splits it with its own splitter.
+                return self._chunks_from_payload(file_path, payload)
+            finally:
+                # 4. Release the lock so the waiting request can proceed.
+                fcntl.flock(lf, fcntl.LOCK_UN)
 
     @staticmethod
     def _engine_name(file_path: Path) -> str:
