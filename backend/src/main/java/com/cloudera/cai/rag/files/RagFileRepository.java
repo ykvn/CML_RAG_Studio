@@ -132,6 +132,26 @@ public class RagFileRepository {
         });
   }
 
+  public List<RagDocument> findDocumentsByFilename(Long dataSourceId, String filename) {
+    return databaseOperations.withHandle(
+        handle -> {
+          handle.registerRowMapper(ConstructorMapper.factory(RagDocument.class));
+          String sql =
+              """
+              SELECT * FROM rag_data_source_document
+              WHERE data_source_id = :dataSourceId
+                AND filename = :filename
+                AND deleted is null OR deleted = :deleted
+              """;
+          try (Query query = handle.createQuery(sql)) {
+            query.bind("dataSourceId", dataSourceId)
+                 .bind("filename", filename)
+                 .bind("deleted", false);
+            return query.mapTo(RagDocument.class).list();
+          }
+        });
+  }
+
   public RagDocument getRagDocumentById(Long id) {
     return databaseOperations.withHandle(
         handle -> {

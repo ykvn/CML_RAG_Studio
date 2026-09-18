@@ -160,6 +160,28 @@ public class TestData {
     return ragFileRepository.insertDocumentMetadata(ragDocument);
   }
 
+  public static Long createTestDocument(
+      long dataSourceId,
+      String documentId,
+      String filename,
+      RagFileRepository ragFileRepository,
+      long sizeInBytes,
+      String createdById) {
+    Types.RagDocument ragDocument =
+        Types.RagDocument.builder()
+            .dataSourceId(dataSourceId)
+            .documentId(documentId)
+            .filename(filename)
+            .s3Path("doesn't matter")
+            .timeCreated(Instant.now())
+            .timeUpdated(Instant.now())
+            .createdById(createdById)
+            .updatedById(createdById)
+            .sizeInBytes(sizeInBytes)
+            .build();
+    return ragFileRepository.insertDocumentMetadata(ragDocument);
+  }
+
   public static void addUserToRequest(MockHttpServletRequest request) {
     addUserToRequest(request, "test-user");
   }

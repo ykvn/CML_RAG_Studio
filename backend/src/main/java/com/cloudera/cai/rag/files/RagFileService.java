@@ -144,6 +144,19 @@ public class RagFileService {
 
   private RagDocumentMetadata processFile(
       Long dataSourceId, String actorCrn, UploadableFile uploadableFile) {
+    // Delete existing documents with the same filename in the same data source
+    List<RagDocument> existingDocuments =
+        ragFileRepository.findDocumentsByFilename(dataSourceId, uploadableFile.getOriginalFilename());
+    for (RagDocument existingDoc : existingDocuments) {
+      log.info(
+          "Replacing existing document: filename={}, documentId={}, id={}",
+          existingDoc.filename(),
+          existingDoc.documentId(),
+          existingDoc.id());
+      ragFileRepository.deleteById(existingDoc.id());
+      ragFileDeleteReconciler.submit(existingDoc);
+    }
+
     String documentId = idGenerator.generateId();
     var s3Path = buildS3Path(dataSourceId, documentId);
 
