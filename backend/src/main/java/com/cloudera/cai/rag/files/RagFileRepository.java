@@ -82,7 +82,7 @@ public class RagFileRepository {
               """
                   SELECT * FROM rag_data_source_document
                   WHERE document_id = :documentId
-                  AND deleted is null OR deleted = :deleted
+                  AND (deleted IS NULL OR deleted = :deleted)
                   """;
           handle.registerRowMapper(ConstructorMapper.factory(RagDocument.class));
           try (Query query = handle.createQuery(sql)) {
@@ -102,7 +102,7 @@ public class RagFileRepository {
               """
               SELECT * FROM rag_data_source_document
                WHERE data_source_id = :dataSourceId
-                AND deleted is null OR deleted = :deleted
+                AND (deleted is null OR deleted = :deleted)
               """;
           handle.registerRowMapper(ConstructorMapper.factory(RagDocument.class));
           try (Query query = handle.createQuery(sql)) {
@@ -141,7 +141,7 @@ public class RagFileRepository {
               SELECT * FROM rag_data_source_document
               WHERE data_source_id = :dataSourceId
                 AND filename = :filename
-                AND deleted is null OR deleted = :deleted
+                AND (deleted IS NULL OR deleted = :deleted)
               """;
           try (Query query = handle.createQuery(sql)) {
             query.bind("dataSourceId", dataSourceId)
