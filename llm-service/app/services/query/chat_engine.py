@@ -176,6 +176,22 @@ CUSTOM_CONTEXT_PROMPT = PromptTemplate(CUSTOM_CONTEXT_PROMPT_TEMPLATE)
 CUSTOM_CONTEXT_REFINE_PROMPT = PromptTemplate(CUSTOM_CONTEXT_REFINE_PROMPT_TEMPLATE)
 
 
+def _resolve_prompts() -> Tuple[PromptTemplate, PromptTemplate, PromptTemplate]:
+    """Resolve chat prompts from the prompt registry, honouring user overrides."""
+    from .prompt_registry import (
+        RAG_CONDENSE_PROMPT as CONDENSE_KEY,
+        RAG_CONTEXT_PROMPT as CONTEXT_KEY,
+        RAG_CONTEXT_REFINE_PROMPT as REFINE_KEY,
+        get_prompt,
+    )
+
+    return (
+        PromptTemplate(get_prompt(CONTEXT_KEY)),
+        PromptTemplate(get_prompt(REFINE_KEY)),
+        PromptTemplate(get_prompt(CONDENSE_KEY)),
+    )
+
+
 class FlexibleContextChatEngine(CondensePlusContextChatEngine):
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -279,11 +295,12 @@ def build_flexible_chat_engine(
     if not retriever:
         return None
     postprocessors = _create_node_postprocessors(configuration)
+    context_prompt, context_refine_prompt, condense_prompt = _resolve_prompts()
     chat_engine: FlexibleContextChatEngine = FlexibleContextChatEngine.from_defaults(
         llm=llm,
-        context_prompt=CUSTOM_CONTEXT_PROMPT,
-        context_refine_prompt=CUSTOM_CONTEXT_REFINE_PROMPT,
-        condense_prompt=CUSTOM_CONDENSE_PROMPT,
+        context_prompt=context_prompt,
+        context_refine_prompt=context_refine_prompt,
+        condense_prompt=condense_prompt,
         retriever=retriever,
         node_postprocessors=postprocessors,
     )

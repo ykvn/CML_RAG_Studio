@@ -47,42 +47,11 @@ from .metadata_apis import session_metadata_api
 
 logger = logging.getLogger(__name__)
 
-RENAME_SESSION_PROMPT_TEMPLATE = """
-You are tasked with suggesting an apt name for a chat session based on its first interaction between a User and an Assistant. 
+# RENAME_SESSION_PROMPT_TEMPLATE was moved to app/services/query/prompt_registry.py
+# (key: session_rename_prompt) so it can be edited from the "Model Prompt" settings page.
 
-# Instructions
-IMPORTANTLY, ONLY RETURN THE NAME OF THE SESSION.  Only return a single line and sessions name, without any additional text or formatting.
-Use the below interactions as a guide but do not include them in your response.
 
-### Example 1:
-First Interaction:
-```
-User: What is your name?
-Assistant: My name is Assistant.
-```
-
-Session Name:
-Introduction
-
-### Example 2:
-First Interaction:
-```
-User: What do you know about the Moon?
-Assistant: The Moon is Earth's only natural satellite. It is the fifth-largest satellite in the Solar System, and by far the largest among planetary satellites relative to the size of the planet that it orbits.
-```
-
-Session Name:
-Facts about the Moon
-
-# Your turn:
-First Interaction:
-```
-User: {}
-Assistant: {}
-```
-
-Session Name: 
-"""
+from .query.prompt_registry import SESSION_RENAME_PROMPT, get_prompt
 
 
 def rename_session(session_id: int, user_name: Optional[str]) -> str:
@@ -95,9 +64,9 @@ def rename_session(session_id: int, user_name: Optional[str]) -> str:
     first_interaction = chat_history[0].rag_message
     session_metadata = session_metadata_api.get_session(session_id, user_name)
     llm = models.LLM.get(session_metadata.inference_model)
-    prompt = RENAME_SESSION_PROMPT_TEMPLATE.format(
-        first_interaction.user,
-        first_interaction.assistant,
+    prompt = get_prompt(SESSION_RENAME_PROMPT).format(
+        user_message=first_interaction.user,
+        assistant_message=first_interaction.assistant,
     )
     response = llm.complete(prompt=prompt)
     session_name = response.text.strip().split("\n")[0]

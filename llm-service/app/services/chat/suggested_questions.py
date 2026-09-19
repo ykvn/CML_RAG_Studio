@@ -141,29 +141,21 @@ def generate_suggested_questions(
         # raise HTTPException(status_code=404, detail="Knowledge base not found.")
 
     chat_history = retrieve_chat_history(session_id)
-    query_str = (
-        "Give me a list of questions that you can answer."
-        " Each question should be on a new line."
-        " There should be no more than four (4) questions."
-        " Each question should be no longer than fifteen (15) words."
-        " The response should be a bulleted list, using an asterisk (*) to denote the bullet item."
-        " Only return plain text."
-        " Do not return any HTML tags or markdown formatting."
-        " Do not return questions based on the metadata of the document. Only the content."
-        " Do not start like this - `Here are four questions that I can answer based on the context information`"
-        " Only return the list."
-    )
+    from .query.prompt_registry import SUGGESTED_QUESTIONS_PROMPT, get_prompt
+
     if chat_history:
-        query_str = (
-            query_str
-            + (
-                "I will provide a response from my last question to help with generating new questions."
-                " Consider returning questions that are relevant to the response"
-                " They might be follow up questions or questions that are related to the response."
-                " Here is the last response received:\n"
-            )
+        last_response_block = (
+            "I will provide a response from my last question to help with generating new questions."
+            " Consider returning questions that are relevant to the response"
+            " They might be follow up questions or questions that are related to the response."
+            " Here is the last response received:\n"
             + chat_history[-1].content
         )
+    else:
+        last_response_block = ""
+    query_str = get_prompt(SUGGESTED_QUESTIONS_PROMPT).format(
+        last_response_block=last_response_block
+    )
     response, _ = querier.query(
         session,
         query_str,

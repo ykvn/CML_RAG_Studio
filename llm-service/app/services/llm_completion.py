@@ -91,9 +91,8 @@ def stream_completion(
 
 
 def hypothetical(question: str, configuration: QueryConfiguration) -> str:
+    from .query.prompt_registry import HYDE_PROMPT, get_prompt
+
     model: LLM = models.LLM.get(configuration.model_name)
-    prompt: str = (
-        f"You are an expert. You are asked: {question}. "
-        "Produce a brief document that would hypothetically answer this question."
-    )
+    prompt: str = get_prompt(HYDE_PROMPT).format(question=question)
     return model.complete(prompt).text

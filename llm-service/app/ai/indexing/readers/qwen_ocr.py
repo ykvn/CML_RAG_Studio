@@ -61,16 +61,9 @@ MAX_OCR_PAGE_CHARS = 12000  # client-side backstop: terminates stream on halluci
 # One page is sent per request, so no PAGE markers are needed. Crucially this
 # prompt forbids summarizing/truncating tables or lists, which previously caused
 # table rows to be dropped when the model ran out of output tokens.
-OCR_PAGE_PROMPT = (
-    "Perform OCR of the single page of the document shown in the image. "
-    "Return all the text exactly as it appears, preserving layout where possible. "
-    "IMPORTANT: Return every table row and every list item verbatim; do not "
-    "summarize, truncate, or omit any table rows. "
-    "If the page contains any charts or graphs, provide a concise summary of them "
-    "separately at the end, clearly labeled 'CHART SUMMARY:'. "
-    "Do not summarize or omit any table data."
-    "Do not format the output as HTML or XML; STRICTLY return plain text."
-)
+from ....services.query.prompt_registry import OCR_PAGE_PROMPT, get_prompt
+
+OCR_PAGE_PROMPT = get_prompt(OCR_PAGE_PROMPT)
 
 _PAGE_MARKER_RE = re.compile(r"---\s*PAGE\s+(\d+)\s*---", re.IGNORECASE)
 

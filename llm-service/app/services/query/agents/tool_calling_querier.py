@@ -463,7 +463,9 @@ def build_function_agent(
     tools: list[BaseTool],
     streaming_enabled: bool,
 ) -> tuple[FunctionAgent, str]:
-    formatted_prompt = DEFAULT_AGENT_PROMPT.format(
+    from ..prompt_registry import AGENT_SYSTEM_PROMPT, get_prompt
+
+    formatted_prompt = get_prompt(AGENT_SYSTEM_PROMPT).format(
         date=datetime.datetime.now().strftime("%A, %B %d, %Y"),
         time=datetime.datetime.now().strftime("%H:%M:%S %p"),
     )

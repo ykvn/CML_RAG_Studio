@@ -93,6 +93,10 @@ class _Settings:
         return os.path.join("..", "tools")
 
     @property
+    def prompts_dir(self) -> str:
+        return os.environ.get("RAG_PROMPTS_DIR", os.path.join("..", "prompts"))
+
+    @property
     def caii_domain(self) -> Optional[str]:
         return os.environ.get("CAII_DOMAIN")
 

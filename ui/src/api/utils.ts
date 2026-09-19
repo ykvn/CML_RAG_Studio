@@ -83,6 +83,8 @@ export enum MutationKeys {
   "streamChatMutation" = "streamChatMutation",
   "setCdpToken" = "setCdpToken",
   "validateJdbcConnection" = "validateJdbcConnection",
+  "updatePrompts" = "updatePrompts",
+  "resetPrompts" = "resetPrompts",
 }
 
 export enum QueryKeys {
@@ -113,6 +115,7 @@ export enum QueryKeys {
   "getSessionsForProject" = "getSessionsForProject",
   "getAmpConfig" = "getAmpConfig",
   "getTools" = "getTools",
+  "getPrompts" = "getPrompts",
   "getPollingAmpConfig" = "getPollingAmpConfig",
   "getCAIIModelStatus" = "getCAIIModelStatus",
 }

@@ -44,10 +44,12 @@ import { useEffect } from "react";
 import { getAmpConfigQueryOptions } from "src/api/ampMetadataApi.ts";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import ToolsPage from "pages/Tools/ToolsPage.tsx";
+import ModelPromptPage from "pages/Settings/ModelPromptFields.tsx";
 
 const modelConfigKey = "modelConfiguration";
 const ampSettingsKey = "ampSettings";
 const toolsKey = "tools";
+const modelPromptKey = "modelPrompt";
 
 const SettingsNavigation = () => {
   const navigate = useNavigate();
@@ -77,6 +79,12 @@ const SettingsNavigation = () => {
       key: toolsKey,
       label: "Tools",
       children: <ToolsPage />,
+      disabled: !config?.is_valid_config,
+    },
+    {
+      key: modelPromptKey,
+      label: "Model Prompt",
+      children: <ModelPromptPage />,
       disabled: !config?.is_valid_config,
     },
   ];

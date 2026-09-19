@@ -46,6 +46,7 @@ from . import summaries
 from . import amp_metadata
 from . import models
 from . import metrics
+from . import prompts
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +62,4 @@ router.include_router(amp_metadata.router, prefix="/index", deprecated=True)
 router.include_router(models.router)
 router.include_router(metrics.router)
 router.include_router(tools.router)
+router.include_router(prompts.router)
