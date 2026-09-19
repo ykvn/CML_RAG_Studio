@@ -83,7 +83,7 @@ const SettingsNavigation = () => {
     },
     {
       key: modelPromptKey,
-      label: "Model Prompts",
+      label: "Model Prompt List",
       children: <ModelPromptPage />,
       disabled: !config?.is_valid_config,
     },
