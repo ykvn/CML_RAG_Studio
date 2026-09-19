@@ -146,7 +146,8 @@ class ProjectControllerTest {
     assertThat(dataSources).extracting("id").contains(dataSourceId);
 
     // Verify the session is associated with the project
-    List<Types.Session> sessions = controller.getSessionsForProject(newProject.id());
+    List<Types.Session> sessions =
+        controller.getSessionsForProject(newProject.id(), requestWithUser("test-user"));
     assertThat(sessions).extracting(Types.Session::id).contains(session.id());
 
     // Delete the project
@@ -160,7 +161,7 @@ class ProjectControllerTest {
     assertThat(projectService.getDataSourcesForProject(newProject.id())).isEmpty();
 
     // Verify the sessions are marked as deleted
-    assertThat(sessionService.getSessionsByProjectId(newProject.id())).isEmpty();
+    assertThat(sessionService.getSessionsByProjectId(newProject.id(), "test-user")).isEmpty();
   }
 
   @Test
@@ -279,7 +280,8 @@ class ProjectControllerTest {
     Types.CreateProject createProject2 = TestData.createProjectRequest("test-project-2");
     var project2 = controller.create(createProject2, request);
 
-    // Create sessions with different project IDs
+    // Create sessions with different project IDs (all owned by "test-user", matching the
+    // request user, so they are visible in the user-scoped project listing)
     var createSession1 = TestData.createSessionInstance("session1").withProjectId(project.id());
 
     var createSession2 = TestData.createSessionInstance("session2").withProjectId(project.id());
@@ -287,12 +289,13 @@ class ProjectControllerTest {
     var createSession3 = TestData.createSessionInstance("session3").withProjectId(project2.id());
 
     // Save the sessions
-    sessionService.create(createSession1, "user1");
-    sessionService.create(createSession2, "user2");
-    sessionService.create(createSession3, "user3");
+    sessionService.create(createSession1, "test-user");
+    sessionService.create(createSession2, "test-user");
+    sessionService.create(createSession3, "test-user");
 
     // Get sessions for the first project
-    List<Session> projectSessions = controller.getSessionsForProject(project.id());
+    List<Session> projectSessions =
+        controller.getSessionsForProject(project.id(), requestWithUser("test-user"));
 
     // Verify that only sessions with the specified project ID are returned
     assertThat(projectSessions).hasSize(2);
@@ -302,7 +305,8 @@ class ProjectControllerTest {
     assertThat(projectSessions).extracting("projectId").containsOnly(project.id());
 
     // Get sessions for the second project
-    List<Session> project2Sessions = controller.getSessionsForProject(project2.id());
+    List<Session> project2Sessions =
+        controller.getSessionsForProject(project2.id(), requestWithUser("test-user"));
 
     // Verify that only sessions with the specified project ID are returned
     assertThat(project2Sessions).hasSize(1);
@@ -310,7 +314,8 @@ class ProjectControllerTest {
     assertThat(project2Sessions).extracting("projectId").containsOnly(project2.id());
 
     // Get sessions for non-existent project ID
-    List<Session> nonExistentProjectSessions = controller.getSessionsForProject(999L);
+    List<Session> nonExistentProjectSessions =
+        controller.getSessionsForProject(999L, requestWithUser("test-user"));
 
     // Verify that no sessions are returned
     assertThat(nonExistentProjectSessions).isEmpty();
@@ -355,5 +360,11 @@ class ProjectControllerTest {
 
   private ProjectController createController() {
     return new ProjectController(projectService, SessionService.createNull());
+  }
+
+  private MockHttpServletRequest requestWithUser(String username) {
+    var request = new MockHttpServletRequest();
+    TestData.addUserToRequest(request, username);
+    return request;
   }
 }

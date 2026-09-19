@@ -43,6 +43,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Generator, Any
 
+import requests
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from llama_index.core.base.llms.types import ChatResponse
@@ -70,6 +71,23 @@ from ....services.session import rename_session
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions/{session_id}", tags=["Sessions"])
 no_id_router = APIRouter(prefix="/sessions", tags=["Sessions"])
+
+
+def verify_session_access(session_id: int, remote_user: Optional[str]) -> None:
+    """Ensure the requesting user owns the session before serving chat data.
+
+    Delegates to the Java backend's session lookup, which enforces that the
+    session's ``created_by_id`` matches the ``remote-user`` header. Raises an
+    HTTP error if the session does not exist or belongs to another user.
+    """
+    try:
+        session_metadata_api.get_session(session_id, user_name=remote_user)
+    except requests.HTTPError as error:
+        status_code = error.response.status_code if error.response is not None else 500
+        raise HTTPException(
+            status_code=status_code if status_code != 500 else 403,
+            detail="Session not found or not accessible by this user.",
+        ) from error
 
 
 class RagSuggestedQuestionsResponse(BaseModel):
@@ -140,8 +158,12 @@ class RagStudioChatHistoryResponse(BaseModel):
 )
 @exceptions.propagates
 def chat_history(
-    session_id: int, limit: Optional[int] = None, offset: Optional[int] = None
+    session_id: int,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    remote_user: Optional[str] = Header(None),
 ) -> RagStudioChatHistoryResponse:
+    verify_session_access(session_id, remote_user)
     results = get_chat_history_manager().retrieve_chat_history(session_id=session_id)
 
     paginated_results, previous_id, next_id = paginate(results, limit, offset)
@@ -157,7 +179,10 @@ def chat_history(
     summary="Returns a specific chat messages for the provided session.",
 )
 @exceptions.propagates
-def get_message_by_id(session_id: int, message_id: str) -> RagStudioChatMessage:
+def get_message_by_id(
+    session_id: int, message_id: str, remote_user: Optional[str] = Header(None)
+) -> RagStudioChatMessage:
+    verify_session_access(session_id, remote_user)
     results: list[RagStudioChatMessage] = (
         get_chat_history_manager().retrieve_chat_history(session_id=session_id)
     )
@@ -174,14 +199,20 @@ def get_message_by_id(session_id: int, message_id: str) -> RagStudioChatMessage:
     "/chat-history", summary="Deletes the chat history for the provided session."
 )
 @exceptions.propagates
-def clear_chat_history(session_id: int) -> str:
+def clear_chat_history(
+    session_id: int, remote_user: Optional[str] = Header(None)
+) -> str:
+    verify_session_access(session_id, remote_user)
     get_chat_history_manager().clear_chat_history(session_id=session_id)
     return "Chat history cleared."
 
 
 @router.delete("", summary="Deletes the requested session.")
 @exceptions.propagates
-def delete_session(session_id: int) -> str:
+def delete_session(
+    session_id: int, remote_user: Optional[str] = Header(None)
+) -> str:
+    verify_session_access(session_id, remote_user)
     get_chat_history_manager().delete_chat_history(session_id=session_id)
     return "Chat history deleted."
 

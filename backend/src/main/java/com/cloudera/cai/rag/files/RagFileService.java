@@ -146,7 +146,8 @@ public class RagFileService {
       Long dataSourceId, String actorCrn, UploadableFile uploadableFile) {
     // Delete existing documents with the same filename in the same data source
     List<RagDocument> existingDocuments =
-        ragFileRepository.findDocumentsByFilename(dataSourceId, uploadableFile.getOriginalFilename());
+        ragFileRepository.findDocumentsByFilename(
+            dataSourceId, uploadableFile.getOriginalFilename());
     for (RagDocument existingDoc : existingDocuments) {
       log.info(
           "Replacing existing document: filename={}, documentId={}, id={}",

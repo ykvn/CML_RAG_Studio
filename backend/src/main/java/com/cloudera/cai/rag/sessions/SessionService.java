@@ -140,8 +140,8 @@ public class SessionService {
     return sessionRepository.getSessions(username);
   }
 
-  public List<Types.Session> getSessionsByProjectId(Long projectId) {
-    return sessionRepository.getSessionsByProjectId(projectId);
+  public List<Types.Session> getSessionsByProjectId(Long projectId, String username) {
+    return sessionRepository.getSessionsByProjectId(projectId, username);
   }
 
   public Types.Session getSessionById(Long id, String username) {

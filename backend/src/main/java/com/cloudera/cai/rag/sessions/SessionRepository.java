@@ -225,6 +225,24 @@ public class SessionRepository {
         });
   }
 
+  public List<Types.Session> getSessionsByProjectId(Long projectId, String username) {
+    return databaseOperations.withHandle(
+        handle -> {
+          var sql =
+              """
+                                      SELECT cs.*, csds.data_source_id, rds.id as associated_data_source_id FROM CHAT_SESSION cs
+                                      LEFT JOIN CHAT_SESSION_DATA_SOURCE csds ON cs.id=csds.chat_session_id
+                                      LEFT JOIN RAG_DATA_SOURCE rds ON cs.id=rds.associated_session_id
+                                      WHERE cs.DELETED IS NULL AND cs.project_id = :projectId AND cs.created_by_id = :username
+                                      ORDER BY last_interaction_time DESC, time_created DESC
+                                    """;
+          return querySessions(
+                  handle.createQuery(sql).bind("projectId", projectId).bind("username", username))
+              .map(Types.Session.SessionBuilder::build)
+              .toList();
+        });
+  }
+
   public void delete(Handle handle, Long id) {
     handle.execute("UPDATE CHAT_SESSION SET DELETED = ? WHERE ID = ?", true, id);
   }
