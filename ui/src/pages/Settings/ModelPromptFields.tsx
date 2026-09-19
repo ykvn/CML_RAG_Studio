@@ -63,7 +63,7 @@ const ModelPromptPage = () => {
   const dirtyCount = useMemo(
     () =>
       prompts?.filter(
-        (p) => edited[p.key] !== undefined && edited[p.key] !== p.text,
+        (p) => p.key in edited && edited[p.key] !== p.text,
       ).length ?? 0,
     [edited, prompts],
   );
@@ -85,7 +85,7 @@ const ModelPromptPage = () => {
   const handleSave = () => {
     const changed: Record<string, string> = {};
     prompts?.forEach((p: Prompt) => {
-      if (edited[p.key] !== undefined && edited[p.key] !== p.text) {
+      if (p.key in edited && edited[p.key] !== p.text) {
         changed[p.key] = edited[p.key];
       }
     });
@@ -102,13 +102,14 @@ const ModelPromptPage = () => {
 
   const items = (prompts ?? []).map((p: Prompt, index: number) => {
     const text = edited[p.key] ?? p.text;
-    const modified =
-      edited[p.key] !== undefined ? text !== p.text : p.is_modified;
+    const modified = p.key in edited ? text !== p.text : p.is_modified;
     return {
       key: p.key,
       label: (
         <Space>
-          <Typography.Text strong>{`${index + 1}. ${p.title}`}</Typography.Text>
+          <Typography.Text strong>
+            {index + 1}. {p.title}
+          </Typography.Text>
           {modified ? <Tag color="orange">Modified</Tag> : null}
         </Space>
       ),
@@ -119,12 +120,16 @@ const ModelPromptPage = () => {
             e?.stopPropagation();
             handleReset(p.key);
           }}
-          onCancel={(e) => e?.stopPropagation()}
+          onCancel={(e) => {
+            e?.stopPropagation();
+          }}
         >
           <Button
             size="small"
             type="link"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
             disabled={resetPromptsMutation.isPending}
           >
             Reset
@@ -148,13 +153,17 @@ const ModelPromptPage = () => {
           ) : null}
           <Input.TextArea
             value={text}
-            onChange={(e) => handleChange(p.key, e.target.value)}
+            onChange={(e) => {
+              handleChange(p.key, e.target.value);
+            }}
             rows={Math.min(20, Math.max(6, text.split("\n").length + 1))}
             disabled={isLoading}
           />
           <Button
             size="small"
-            onClick={() => handleChange(p.key, p.default_text)}
+            onClick={() => {
+              handleChange(p.key, p.default_text);
+            }}
             disabled={text === p.default_text}
           >
             Restore default text
@@ -179,7 +188,8 @@ const ModelPromptPage = () => {
           loading={updatePromptsMutation.isPending}
           disabled={dirtyCount === 0}
         >
-          Save Changes{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
+          Save Changes
+          {dirtyCount > 0 ? ` (${String(dirtyCount)})` : ""}
         </Button>
         <Popconfirm title="Reset ALL prompts to their defaults?">
           <Button danger disabled={resetPromptsMutation.isPending}>
