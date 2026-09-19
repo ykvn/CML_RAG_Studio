@@ -72,17 +72,9 @@ def _generate_suggested_questions_direct_llm(session: Session) -> List[str]:
     chat_history = retrieve_chat_history(session.id)
     if not chat_history:
         return generate_dummy_suggested_questions()
-    query_str = (
-        " Give me a list of possible follow-up questions."
-        " Each question should be on a new line."
-        " There should be no more than four (4) questions."
-        " Each question should be no longer than fifteen (15) words."
-        " The response should be a bulleted list, using an asterisk (*) to denote the bullet item."
-        " Do not start like this - `Here are four questions that I can answer based on the context information`"
-        " Only return the list."
-        " Only return plain text."
-        " Do not return any HTML tags or markdown formatting."
-    )
+    from .query.prompt_registry import SUGGESTED_QUESTIONS_DIRECT_PROMPT, get_prompt
+
+    query_str = get_prompt(SUGGESTED_QUESTIONS_DIRECT_PROMPT)
     chat_response = llm_completion.completion(
         session.id, query_str, session.inference_model
     )
@@ -141,21 +133,31 @@ def generate_suggested_questions(
         # raise HTTPException(status_code=404, detail="Knowledge base not found.")
 
     chat_history = retrieve_chat_history(session_id)
-    from .query.prompt_registry import SUGGESTED_QUESTIONS_PROMPT, get_prompt
-
+    query_str = (
+        "Berikan daftar pertanyaan lanjutan yang mungkin relevan."
+        " Setiap pertanyaan harus ditulis pada baris baru."
+        " Tidak boleh ada lebih dari empat (4) pertanyaan."
+        " Setiap pertanyaan tidak boleh lebih dari lima belas (15) kata."
+        " Respons harus berupa daftar bullet, dengan tanda bintang (*) sebagai bullet."
+        " Jangan memulai respons seperti ini - Berikut adalah empat pertanyaan yang dapat saya jawab berdasarkan informasi yang tersedia"
+        " Hanya kembalikan daftar pertanyaan."
+        " Hanya gunakan plain text."
+        " Do not return any HTML tags or markdown formatting."
+        " Do not return questions based on the metadata of the document. Only the content."
+        " Do not start like this - `Here are four questions that I can answer based on the context information`"
+        " Only return the list."
+    )
     if chat_history:
-        last_response_block = (
-            "I will provide a response from my last question to help with generating new questions."
-            " Consider returning questions that are relevant to the response"
-            " They might be follow up questions or questions that are related to the response."
-            " Here is the last response received:\n"
+        query_str = (
+            query_str
+            + (
+                "I will provide a response from my last question to help with generating new questions."
+                " Consider returning questions that are relevant to the response"
+                " They might be follow up questions or questions that are related to the response."
+                " Here is the last response received:\n"
+            )
             + chat_history[-1].content
         )
-    else:
-        last_response_block = ""
-    query_str = get_prompt(SUGGESTED_QUESTIONS_PROMPT).format(
-        last_response_block=last_response_block
-    )
     response, _ = querier.query(
         session,
         query_str,

@@ -21,13 +21,12 @@ PROMPT_OVERRIDES_FILE = "prompts.json"
 # Prompt ids
 RAG_CONTEXT_PROMPT = "rag_context_prompt"
 RAG_CONTEXT_REFINE_PROMPT = "rag_context_refine_prompt"
-RAG_CONDENSE_PROMPT = "rag_condense_prompt"
 AGENT_SYSTEM_PROMPT = "agent_system_prompt"
 DOCUMENT_SUMMARY_PROMPT = "document_summary_prompt"
 OCR_PAGE_PROMPT = "ocr_page_prompt"
 HYDE_PROMPT = "hyde_prompt"
 SESSION_RENAME_PROMPT = "session_rename_prompt"
-SUGGESTED_QUESTIONS_PROMPT = "suggested_questions_prompt"
+SUGGESTED_QUESTIONS_DIRECT_PROMPT = "suggested_questions_direct_prompt"
 
 
 class PromptDefinition:
@@ -138,25 +137,6 @@ PROMPT_DEFINITIONS: Dict[str, PromptDefinition] = {
             ),
         ),
         PromptDefinition(
-            key=RAG_CONDENSE_PROMPT,
-            title="Question Condensing",
-            description=(
-                "Rewrites a follow-up question as a standalone question using the "
-                "chat history. Available variables: {chat_history}, {question}."
-            ),
-            variables=["chat_history", "question"],
-            default_text=(
-                "Berdasarkan percakapan (antara Pengguna dan Asisten) serta pesan lanjutan dari Pengguna, "
-                "tulis ulang pesan tersebut menjadi pertanyaan mandiri yang mencakup seluruh konteks "
-                "relevan dari percakapan. Berikan pertanyaannya saja, tanpa penjelasan atau deskripsi tambahan.\n\n"
-                "<Riwayat Obrolan>\n"
-                "{chat_history}\n\n"
-                "<Pesan Lanjutan>\n"
-                "{question}\n\n"
-                "<Pertanyaan Mandiri>\n"
-            ),
-        ),
-        PromptDefinition(
             key=AGENT_SYSTEM_PROMPT,
             title="Agent System Prompt (Tool Calling)",
             description=(
@@ -187,14 +167,14 @@ PROMPT_DEFINITIONS: Dict[str, PromptDefinition] = {
             ),
             variables=[],
             default_text=(
-                "Perform OCR of the single page of the document shown in the image. "
-                "Return all the text exactly as it appears, preserving layout where possible. "
-                "IMPORTANT: Return every table row and every list item verbatim; do not "
-                "summarize, truncate, or omit any table rows. "
-                "If the page contains any charts or graphs, provide a concise summary of them "
-                "separately at the end, clearly labeled 'CHART SUMMARY:'. "
-                "Do not summarize or omit any table data."
-                "Do not format the output as HTML or XML; STRICTLY return plain text."
+                "Lakukan OCR pada satu halaman dokumen yang ditampilkan pada gambar. "
+                "Kembalikan seluruh teks persis seperti yang terlihat, dengan mempertahankan tata letak sedapat mungkin. "
+                "PENTING: Kembalikan setiap baris tabel dan setiap item daftar secara lengkap dan persis seperti aslinya; jangan "
+                "merangkum, memotong, atau menghilangkan baris tabel apa pun. "
+                "Jika halaman berisi grafik atau diagram, berikan ringkasan singkat secara terpisah di bagian akhir, "
+                "dengan label 'RINGKASAN GRAFIK:'. "
+                "Jangan merangkum atau menghilangkan data tabel apa pun. "
+                "Jangan memformat output sebagai HTML atau XML; WAJIB mengembalikan plain text."
             ),
         ),
         PromptDefinition(
@@ -206,8 +186,8 @@ PROMPT_DEFINITIONS: Dict[str, PromptDefinition] = {
             ),
             variables=["question"],
             default_text=(
-                "You are an expert. You are asked: {question}. "
-                "Produce a brief document that would hypothetically answer this question."
+                "Anda adalah seorang ahli di bidang terkait. Anda diminta untuk menjawab pertanyaan berikut: {question}. "
+                "Buatlah dokumen singkat yang secara hipotetis dapat memberikan jawaban atas pertanyaan tersebut."
             ),
         ),
         PromptDefinition(
@@ -249,26 +229,24 @@ PROMPT_DEFINITIONS: Dict[str, PromptDefinition] = {
             ),
         ),
         PromptDefinition(
-            key=SUGGESTED_QUESTIONS_PROMPT,
+            key=SUGGESTED_QUESTIONS_DIRECT_PROMPT,
             title="Suggested Questions",
             description=(
-                "Used to generate suggested follow-up questions for a chat. "
-                "Available variables: {last_response_block} (the previous assistant "
-                "response section; empty on a fresh session)."
+                "Used to generate suggested follow-up questions for sessions that "
+                "have no indexed knowledge-base content (direct LLM mode). No "
+                "variables available."
             ),
-            variables=["last_response_block"],
+            variables=[],
             default_text=(
-                "Give me a list of questions that you can answer."
-                " Each question should be on a new line."
-                " There should be no more than four (4) questions."
-                " Each question should be no longer than fifteen (15) words."
-                " The response should be a bulleted list, using an asterisk (*) to denote the bullet item."
-                " Only return plain text."
-                " Do not return any HTML tags or markdown formatting."
-                " Do not return questions based on the metadata of the document. Only the content."
-                " Do not start like this - `Here are four questions that I can answer based on the context information`"
-                " Only return the list."
-                "{last_response_block}"
+                " Berikan daftar pertanyaan lanjutan yang mungkin relevan."
+                " Setiap pertanyaan harus ditulis pada baris baru."
+                " Tidak boleh ada lebih dari empat (4) pertanyaan."
+                " Setiap pertanyaan tidak boleh lebih dari lima belas (15) kata."
+                " Respons harus berupa daftar bullet, dengan tanda bintang (*) sebagai bullet."
+                " Jangan memulai respons seperti ini - Berikut adalah empat pertanyaan yang dapat saya jawab berdasarkan informasi yang tersedia"
+                " Hanya kembalikan daftar pertanyaan."
+                " Hanya gunakan plain text."
+                " Jangan gunakan tag HTML atau format Markdown."
             ),
         ),
     ]
