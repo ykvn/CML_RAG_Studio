@@ -49,7 +49,7 @@ import {
   Typography,
 } from "antd";
 import { DataSourceType } from "src/api/dataSourceApi.ts";
-import { useTransformModelOptions } from "src/utils/modelUtils.ts";
+import { useTransformModelOptions, getDefaultRerankModel } from "src/utils/modelUtils.ts";
 import { ResponseChunksRange } from "pages/RagChatTab/Settings/ResponseChunksSlider.tsx";
 import { useGetLlmModels, useGetRerankingModels } from "src/api/modelsApi.ts";
 import { formatDataSource } from "src/utils/formatters.ts";
@@ -82,11 +82,7 @@ const CreateSessionForm = ({ form, dataSources }: CreateSessionFormProps) => {
         <>
           <Form.Item<CreateSessionRequest>
             name={["queryConfiguration", "enableToolCalling"]}
-            initialValue={
-              llmModels === undefined || llmModels.length === 0
-                ? false
-                : llmModels[0].tool_calling_supported
-            }
+            initialValue={false}
             valuePropName="checked"
             label={
               <Popover
@@ -137,7 +133,7 @@ const CreateSessionForm = ({ form, dataSources }: CreateSessionFormProps) => {
           </Form.Item>
           <Form.Item<CreateSessionRequest>
             name={["queryConfiguration", "enableSummaryFilter"]}
-            initialValue={true}
+            initialValue={false}
             valuePropName="checked"
             label={
               <Popover
@@ -229,9 +225,7 @@ const CreateSessionForm = ({ form, dataSources }: CreateSessionFormProps) => {
       <Form.Item
         name="rerankModel"
         label="Reranking model"
-        initialValue={
-          rerankingModels?.length ? rerankingModels[0].model_id : ""
-        }
+        initialValue={getDefaultRerankModel(rerankingModels) ?? ""}
       >
         <Select allowClear options={rerankModelOptions} />
       </Form.Item>

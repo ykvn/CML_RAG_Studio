@@ -55,7 +55,7 @@ import {
   useGetLlmModels,
   useGetRerankingModels,
 } from "src/api/modelsApi.ts";
-import { useTransformModelOptions } from "src/utils/modelUtils.ts";
+import { useTransformModelOptions, getDefaultRerankModel } from "src/utils/modelUtils.ts";
 import { ResponseChunksRange } from "pages/RagChatTab/Settings/ResponseChunksSlider.tsx";
 import { useContext, useEffect } from "react";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
@@ -327,7 +327,11 @@ const ChatSettingsModal = ({
           <Form.Item
             name="rerankModel"
             label="Reranking model"
-            initialValue={activeSession.rerankModel}
+            initialValue={
+              activeSession.rerankModel ??
+              getDefaultRerankModel(rerankingModels) ??
+              ""
+            }
           >
             <Select allowClear options={rerankModelOptions} />
           </Form.Item>

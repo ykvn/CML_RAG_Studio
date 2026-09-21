@@ -60,9 +60,9 @@ public class SessionRepository {
   public static final Types.QueryConfiguration DEFAULT_QUERY_CONFIGURATION =
       Types.QueryConfiguration.builder()
           .enableHyde(false)
-          .enableSummaryFilter(true)
+          .enableSummaryFilter(false)
           .enableToolCalling(false)
-          .disableStreaming(true)
+          .disableStreaming(false)
           .selectedTools(List.of())
           .build();
   private final DatabaseOperations databaseOperations;

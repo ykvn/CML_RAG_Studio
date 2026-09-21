@@ -7,6 +7,8 @@ import {
 } from "src/api/sessionApi";
 import messageQueue from "src/utils/messageQueue.ts";
 import { getDefaultProjectQueryOptions } from "src/api/projectsApi.ts";
+import { useGetRerankingModels } from "src/api/modelsApi.ts";
+import { getDefaultRerankModel } from "src/utils/modelUtils.ts";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 const useCreateSessionAndRedirect = (
@@ -20,6 +22,7 @@ const useCreateSessionAndRedirect = (
 
   const { data: embeddingModels } = useGetEmbeddingModels();
   const { data: models } = useGetLlmModels();
+  const { data: rerankingModels } = useGetRerankingModels();
   const createSession = useCreateSessionMutation({
     onSuccess: (session) => {
       messageQueue.success("Session created successfully");
@@ -38,18 +41,16 @@ const useCreateSessionAndRedirect = (
     inferenceModel?: string,
   ) => {
     if (models) {
-      const supportsToolCalling = models.find(
-        (model) => model.model_id === inferenceModel,
-      )?.tool_calling_supported;
       const requestBody: CreateSessionRequest = {
         name: "",
         dataSourceIds: dataSourceIds,
         inferenceModel: inferenceModel ?? models[0].model_id,
+        rerankModel: getDefaultRerankModel(rerankingModels),
         responseChunks: 10,
         queryConfiguration: {
           enableHyde: false,
-          enableSummaryFilter: true,
-          enableToolCalling: supportsToolCalling ?? false,
+          enableSummaryFilter: false,
+          enableToolCalling: false,
           disableStreaming: false,
           selectedTools: [],
         },

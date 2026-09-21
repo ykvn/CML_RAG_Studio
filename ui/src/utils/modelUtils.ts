@@ -74,6 +74,16 @@ export type ModelSelectOptions = (
     }
 )[];
 
+export const DEFAULT_RERANK_MODEL_ID = "bge-reranker-v2-m3";
+
+export const getDefaultRerankModel = (
+  rerankingModels?: Model[],
+): string | undefined =>
+  rerankingModels?.length
+    ? (rerankingModels.find((model) => model.model_id === DEFAULT_RERANK_MODEL_ID)
+        ?.model_id ?? rerankingModels[0].model_id)
+    : undefined;
+
 export const useTransformModelOptions = (
   models?: Model[],
 ): ModelSelectOptions => {
