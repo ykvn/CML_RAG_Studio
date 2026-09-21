@@ -65,7 +65,7 @@ const SettingsNavigation = () => {
   const tabItems: TabsProps["items"] = [
     {
       key: ampSettingsKey,
-      label: "Studio Settings",
+      label: "Application Settings",
       children: <AmpSettingsPage />,
       disabled: !config?.is_valid_config,
     },

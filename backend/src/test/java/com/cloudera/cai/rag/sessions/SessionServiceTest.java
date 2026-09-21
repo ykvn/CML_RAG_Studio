@@ -79,6 +79,10 @@ class SessionServiceTest {
     assertThat(ragDataSourceById).isNotNull();
     assertThat(ragDataSourceById.embeddingModel()).isEqualTo("embeddingModelTest");
     assertThat(ragDataSourceById.summarizationModel()).isEqualTo(input.inferenceModel());
+    assertThat(ragDataSourceById.chunkSize())
+        .isEqualTo(RagDataSourceService.SESSION_DATA_SOURCE_CHUNK_SIZE);
+    assertThat(ragDataSourceById.chunkOverlapPercent())
+        .isEqualTo(RagDataSourceService.SESSION_DATA_SOURCE_CHUNK_OVERLAP);
   }
 
   @Test

@@ -49,6 +49,15 @@ import org.springframework.stereotype.Component;
 public class RagDataSourceService {
   public static final int DEFAULT_CHUNK_OVERLAP = 10;
   public static final int DEFAULT_CHUNK_SIZE = 512;
+
+  /**
+   * Chunk size for the chat-scoped data source created with every new session (chat file uploads).
+   */
+  public static final int SESSION_DATA_SOURCE_CHUNK_SIZE = 4096;
+
+  /** Chunk overlap, as a percentage of the chunk size, for the chat-scoped data source. */
+  public static final int SESSION_DATA_SOURCE_CHUNK_OVERLAP = 30;
+
   private final RagDataSourceRepository ragDataSourceRepository;
 
   public RagDataSourceService(RagDataSourceRepository ragDataSourceRepository) {
