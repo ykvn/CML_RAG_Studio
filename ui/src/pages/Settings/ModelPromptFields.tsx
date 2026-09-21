@@ -178,7 +178,7 @@ const ModelPromptPage = () => {
       <Typography.Title level={3}>Model Prompts</Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
         Edit the prompts used by the application when interacting with the
-        model. Changes take effect immediately after saving — no restart
+        model. Changes take effect immediately after saving — restart is
         required. Use &ldquo;Reset&rdquo; to revert a prompt to its default.
       </Typography.Paragraph>
       <Flex gap={8}>
