@@ -144,10 +144,9 @@ public class RagFileRepository {
                 AND (deleted IS NULL OR deleted = :deleted)
               """;
           try (Query query = handle.createQuery(sql)) {
-            query
-                .bind("dataSourceId", dataSourceId)
-                .bind("filename", filename)
-                .bind("deleted", false);
+            query.bind("dataSourceId", dataSourceId)
+                 .bind("filename", filename)
+                 .bind("deleted", false);
             return query.mapTo(RagDocument.class).list();
           }
         });

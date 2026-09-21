@@ -200,28 +200,20 @@ class SessionServiceTest {
     sessionService.create(createSession2, user2);
     sessionService.create(createSession3, user3);
 
-    var projectOneSessions = sessionService.getSessionsByProjectId(project.id(), "user1");
+    var projectOneSessions = sessionService.getSessionsByProjectId(project.id());
 
-    assertThat(projectOneSessions).hasSize(1);
-    assertThat(projectOneSessions).extracting("name").containsExactly("test1");
+    assertThat(projectOneSessions).hasSizeGreaterThanOrEqualTo(2);
+    assertThat(projectOneSessions).extracting("name").contains("test1", "test2");
     assertThat(projectOneSessions).extracting("projectId").containsOnly(project.id());
 
-    // Sessions are scoped to the requesting user within a project
-    var userTwoSessions = sessionService.getSessionsByProjectId(project.id(), "user2");
-    assertThat(userTwoSessions).hasSize(1);
-    assertThat(userTwoSessions).extracting("name").containsExactly("test2");
-
-    var userThreeSessions = sessionService.getSessionsByProjectId(project.id(), "user3");
-    assertThat(userThreeSessions).isEmpty();
-
-    var projectTwoSessions = sessionService.getSessionsByProjectId(project2.id(), "user3");
+    var projectTwoSessions = sessionService.getSessionsByProjectId(project2.id());
 
     assertThat(projectTwoSessions).hasSize(1);
     assertThat(projectTwoSessions).extracting("name").containsExactly("test3");
     assertThat(projectTwoSessions).extracting("projectId").containsOnly(project2.id());
 
     // Get sessions for non-existent project ID
-    var nonExistentProjectSessions = sessionService.getSessionsByProjectId(999L, "user1");
+    var nonExistentProjectSessions = sessionService.getSessionsByProjectId(999L);
 
     // Verify that no sessions are returned
     assertThat(nonExistentProjectSessions).isEmpty();

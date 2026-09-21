@@ -125,10 +125,8 @@ public class ProjectController {
   }
 
   @GetMapping(value = "/{projectId}/sessions", produces = "application/json")
-  public List<Types.Session> getSessionsForProject(
-      @PathVariable Long projectId, HttpServletRequest request) {
+  public List<Types.Session> getSessionsForProject(@PathVariable Long projectId) {
     log.debug("Getting Sessions for Project {}", projectId);
-    String username = usernameExtractor.extractUsername(request);
-    return sessionService.getSessionsByProjectId(projectId, username);
+    return sessionService.getSessionsByProjectId(projectId);
   }
 }
