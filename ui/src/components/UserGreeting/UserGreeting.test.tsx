@@ -96,7 +96,9 @@ describe("UserGreeting", () => {
     const { wrapper } = createWrapper();
     render(<UserGreeting />, { wrapper });
 
-    await screen.findByText("Welcome, jdoe");
+    expect(await screen.findByTestId("welcome-user")).toHaveTextContent(
+      "Welcome, jdoe",
+    );
   });
 
   it("renders nothing when no user could be identified", async () => {
@@ -131,7 +133,9 @@ describe("PageHeaderUserGreeting", () => {
     const { wrapper } = createWrapper();
     render(<PageHeaderUserGreeting />, { wrapper });
 
-    await screen.findByText("Welcome, jdoe");
+    expect(await screen.findByTestId("welcome-user")).toHaveTextContent(
+      "Welcome, jdoe",
+    );
   });
 
   it("renders nothing in composable mode (the top nav already shows it)", async () => {

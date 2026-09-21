@@ -64,7 +64,7 @@ export const UserGreeting = () => {
       style={{ whiteSpace: "nowrap", fontSize: 14 }}
       data-testid="welcome-user"
     >
-      Welcome, {username}
+      Welcome, <strong>{username}</strong>
     </Typography.Text>
   );
 };
