@@ -76,15 +76,15 @@ const SettingsNavigation = () => {
       disabled: !config?.is_valid_config,
     },
     {
-      key: toolsKey,
-      label: "Tools",
-      children: <ToolsPage />,
-      disabled: !config?.is_valid_config,
-    },
-    {
       key: modelPromptKey,
       label: "Model Prompts",
       children: <ModelPromptPage />,
+      disabled: !config?.is_valid_config,
+    },
+    {
+      key: toolsKey,
+      label: "Tools",
+      children: <ToolsPage />,
       disabled: !config?.is_valid_config,
     },
   ];

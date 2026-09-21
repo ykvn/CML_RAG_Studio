@@ -1,6 +1,6 @@
-/*******************************************************************************
+/*
  * CLOUDERA APPLIED MACHINE LEARNING PROTOTYPE (AMP)
- * (C) Cloudera, Inc. 2024
+ * (C) Cloudera, Inc. 2025
  * All rights reserved.
  *
  * Applicable Open Source License: Apache 2.0
@@ -36,33 +36,56 @@
  * DATA.
  ******************************************************************************/
 
-import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { Flex, Layout, Typography } from "antd";
-import { cdlGray300 } from "src/cuix/variables.ts";
-import { PageHeaderUserGreeting } from "src/components/UserGreeting/UserGreeting.tsx";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Flex, Typography } from "antd";
+import { getCurrentUserQueryOptions } from "src/api/userApi.ts";
+import { getAmpIsComposableQueryOptions } from "src/api/ampMetadataApi.ts";
 
-const { Content, Header } = Layout;
+const UNKNOWN_USERNAME = "unknown";
 
-export const Route = createFileRoute("/_layout/data/_layout-datasources")({
-  component: () => (
-    <Layout
-      style={{
-        minHeight: "100%",
-        width: "100%",
-        margin: 0,
-      }}
+/**
+ * Displays "Welcome, <username>" for the currently signed-in user.
+ * The username comes from the CML gateway headers (remote-user /
+ * origin-remote-user), resolved by the backend. Renders nothing while the
+ * request is in flight, on error, or when no user could be identified
+ * (e.g. local development without the gateway).
+ */
+export const UserGreeting = () => {
+  const { data } = useQuery(getCurrentUserQueryOptions);
+  const username = data?.username;
+
+  if (!username || username === UNKNOWN_USERNAME) {
+    return null;
+  }
+
+  return (
+    <Typography.Text
+      type="secondary"
+      style={{ whiteSpace: "nowrap", fontSize: 14 }}
+      data-testid="welcome-user"
     >
-      <Header style={{ height: 48, borderBottom: `1px solid ${cdlGray300}` }}>
-        <Flex align="center" justify="space-between" style={{ height: "100%" }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            Knowledge Bases
-          </Typography.Title>
-          <PageHeaderUserGreeting />
-        </Flex>
-      </Header>
-      <Content style={{ margin: "0", overflowY: "auto" }}>
-        <Outlet />
-      </Content>
-    </Layout>
-  ),
-});
+      Welcome, {username}
+    </Typography.Text>
+  );
+};
+
+/**
+ * UserGreeting for the studio-mode page headers. Renders nothing in
+ * composable deployments, where the composable top nav already shows the
+ * greeting (prevents a duplicated greeting on every page).
+ */
+export const PageHeaderUserGreeting = () => {
+  const { data: isComposable } = useSuspenseQuery(
+    getAmpIsComposableQueryOptions,
+  );
+
+  if (isComposable) {
+    return null;
+  }
+
+  return (
+    <Flex align="center">
+      <UserGreeting />
+    </Flex>
+  );
+};

@@ -39,6 +39,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { Flex, Layout, Typography } from 'antd'
 import { cdlGray300 } from 'src/cuix/variables.ts'
+import { PageHeaderUserGreeting } from 'src/components/UserGreeting/UserGreeting.tsx'
 
 const { Content, Header } = Layout
 
@@ -52,10 +53,11 @@ export const Route = createFileRoute('/_layout/analytics/_layout-analytics')({
       }}
     >
       <Header style={{ height: 48, borderBottom: `1px solid ${cdlGray300}` }}>
-        <Flex align="center" style={{ height: '100%' }}>
+        <Flex align="center" justify="space-between" style={{ height: '100%' }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
             Analytics
           </Typography.Title>
+          <PageHeaderUserGreeting />
         </Flex>
       </Header>
       <Content style={{ margin: '0', overflowY: 'auto' }}>

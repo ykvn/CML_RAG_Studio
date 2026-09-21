@@ -44,6 +44,9 @@ import java.util.List;
 import lombok.*;
 
 public class Types {
+  /** Data representing the currently signed-in user. */
+  public record CurrentUser(String username) {}
+
   /** Data returned from the file upload endpoint. */
   public record RagDocumentMetadata(
       String fileName, String documentId, String extension, long sizeInBytes) {}

@@ -43,6 +43,7 @@ export const paths = {
   files: "files",
   dataSources: "dataSources",
   sessions: "sessions",
+  user: "user",
 };
 
 export interface UseMutationType<T> {
@@ -118,6 +119,7 @@ export enum QueryKeys {
   "getPrompts" = "getPrompts",
   "getPollingAmpConfig" = "getPollingAmpConfig",
   "getCAIIModelStatus" = "getCAIIModelStatus",
+  "getCurrentUser" = "getCurrentUser",
 }
 
 export const commonHeaders = {

@@ -44,6 +44,7 @@ import useModal from "src/utils/useModal.ts";
 import SettingsIcon from "src/cuix/icons/SettingsIcon";
 import { cdlBlue600 } from "src/cuix/variables.ts";
 import CreateSessionModal from "pages/RagChatTab/SessionsSidebar/CreateSession/CreateSessionModal.tsx";
+import { PageHeaderUserGreeting } from "src/components/UserGreeting/UserGreeting.tsx";
 
 const { Header } = Layout;
 
@@ -89,21 +90,24 @@ export const RagChatHeader = ({
             </Typography.Text>
           ) : null}
         </Flex>
-        <Button
-          style={{ width: 140, alignItems: "center" }}
-          onClick={handleOpenModal}
-        >
-          <Flex
-            align="center"
-            gap={5}
-            style={{ margin: 0, padding: 0, height: "100%" }}
+        <Flex align="center" gap={16}>
+          <PageHeaderUserGreeting />
+          <Button
+            style={{ width: 140, alignItems: "center" }}
+            onClick={handleOpenModal}
           >
-            <SettingsIcon color={cdlBlue600} fontSize={18} />
-            <Typography.Text style={{ color: cdlBlue600 }}>
-              Chat Settings
-            </Typography.Text>
-          </Flex>
-        </Button>
+            <Flex
+              align="center"
+              gap={5}
+              style={{ margin: 0, padding: 0, height: "100%" }}
+            >
+              <SettingsIcon color={cdlBlue600} fontSize={18} />
+              <Typography.Text style={{ color: cdlBlue600 }}>
+                Chat Settings
+              </Typography.Text>
+            </Flex>
+          </Button>
+        </Flex>
       </Flex>{" "}
       {activeSession ? (
         <ChatSettingsModal

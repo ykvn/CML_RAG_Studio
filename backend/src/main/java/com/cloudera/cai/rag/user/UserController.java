@@ -1,6 +1,6 @@
-/*******************************************************************************
+/*
  * CLOUDERA APPLIED MACHINE LEARNING PROTOTYPE (AMP)
- * (C) Cloudera, Inc. 2024
+ * (C) Cloudera, Inc. 2025
  * All rights reserved.
  *
  * Applicable Open Source License: Apache 2.0
@@ -36,56 +36,25 @@
  * DATA.
  ******************************************************************************/
 
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { Flex, Layout, Typography } from "antd";
-import { cdlGray300 } from "src/cuix/variables.ts";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { getAmpConfigQueryOptions } from "src/api/ampMetadataApi.ts";
-import SettingsNavigation from "pages/Settings/SettingsNavigation.tsx";
-import NotFoundComponent from "src/components/ErrorComponents/NotFoundComponent.tsx";
-import { PageHeaderUserGreeting } from "src/components/UserGreeting/UserGreeting.tsx";
+package com.cloudera.cai.rag.user;
 
-const { Content, Header } = Layout;
+import com.cloudera.cai.rag.Types;
+import com.cloudera.cai.rag.util.UsernameExtractor;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-export const Route = createLazyFileRoute("/_layout/settings/_layout-settings/")(
-  {
-    component: () => {
-      const { data: config } = useSuspenseQuery(getAmpConfigQueryOptions);
+@RestController
+@Slf4j
+@RequestMapping("/api/v1/rag/user")
+public class UserController {
+  private final UsernameExtractor usernameExtractor = new UsernameExtractor();
 
-      return (
-        <Layout
-          style={{
-            minHeight: "100%",
-            width: "100%",
-            margin: 0,
-          }}
-        >
-          <Header
-            style={{ height: 48, borderBottom: `1px solid ${cdlGray300}` }}
-          >
-            <Flex
-              align="center"
-              justify={"space-between"}
-              style={{ height: "100%" }}
-            >
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                Settings
-              </Typography.Title>
-              <Flex align={"center"} gap={32}>
-                <PageHeaderUserGreeting />
-                <Typography.Text type="secondary">
-                  version: {config?.release_version}
-                </Typography.Text>
-                <Link to={"/docs"}>API Docs</Link>
-              </Flex>
-            </Flex>
-          </Header>
-          <Content style={{ margin: "0", overflowY: "auto" }}>
-            <SettingsNavigation />
-          </Content>
-        </Layout>
-      );
-    },
-    errorComponent: () => <NotFoundComponent />,
-  },
-);
+  @GetMapping(produces = "application/json")
+  public Types.CurrentUser getCurrentUser(HttpServletRequest request) {
+    String username = usernameExtractor.extractUsername(request);
+    return new Types.CurrentUser(username);
+  }
+}

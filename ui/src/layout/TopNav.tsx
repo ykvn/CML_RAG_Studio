@@ -48,6 +48,7 @@ import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 import LightbulbIcon from "src/cuix/icons/LightbulbIcon";
 import { cdlAmber200, cdlAmber900, cdlSlate800 } from "src/cuix/variables.ts";
 import AmpUpdateBanner from "src/components/AmpUpdate/AmpUpdateBanner.tsx";
+import { UserGreeting } from "src/components/UserGreeting/UserGreeting.tsx";
 
 import "./style.css";
 import {
@@ -171,6 +172,9 @@ const TopNav: React.FC = () => {
         style={{ width: "100%" }}
       />
       <AmpUpdateBanner />
+      <Flex align="center" style={{ paddingRight: 12 }}>
+        <UserGreeting />
+      </Flex>
       <TechPreviewItem />
     </Flex>
   );
