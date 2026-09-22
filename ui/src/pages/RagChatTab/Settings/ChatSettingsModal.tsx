@@ -55,7 +55,12 @@ import {
   useGetLlmModels,
   useGetRerankingModels,
 } from "src/api/modelsApi.ts";
-import { useTransformModelOptions, getDefaultRerankModel } from "src/utils/modelUtils.ts";
+import {
+  useTransformChatModelOptions,
+  useTransformModelOptions,
+  getDefaultRerankModel,
+  filterChatSelectableModels,
+} from "src/utils/modelUtils.ts";
 import { ResponseChunksRange } from "pages/RagChatTab/Settings/ResponseChunksSlider.tsx";
 import { useContext, useEffect } from "react";
 import { RagChatContext } from "pages/RagChatTab/State/RagChatContext.tsx";
@@ -96,7 +101,7 @@ const ChatSettingsModal = ({
 }) => {
   const { data: llmModels } = useGetLlmModels();
   const { data: rerankingModels } = useGetRerankingModels();
-  const llmModelOptions = useTransformModelOptions(llmModels);
+  const llmModelOptions = useTransformChatModelOptions(llmModels);
   const rerankModelOptions = useTransformModelOptions(rerankingModels);
   const {
     dataSourcesQuery: { dataSources },
@@ -318,7 +323,9 @@ const ChatSettingsModal = ({
             label="Response synthesizer model"
             initialValue={
               activeSession.inferenceModel ??
-              (llmModels ? llmModels[0].model_id : "")
+              (llmModels
+                ? (filterChatSelectableModels(llmModels)[0]?.model_id ?? "")
+                : "")
             }
             rules={[{ required: true, message: "Please select a model" }]}
           >

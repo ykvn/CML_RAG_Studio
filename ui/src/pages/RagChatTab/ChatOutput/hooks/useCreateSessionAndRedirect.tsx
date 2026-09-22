@@ -8,7 +8,7 @@ import {
 import messageQueue from "src/utils/messageQueue.ts";
 import { getDefaultProjectQueryOptions } from "src/api/projectsApi.ts";
 import { useGetRerankingModels } from "src/api/modelsApi.ts";
-import { getDefaultRerankModel } from "src/utils/modelUtils.ts";
+import { getDefaultRerankModel, filterChatSelectableModels } from "src/utils/modelUtils.ts";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 const useCreateSessionAndRedirect = (
@@ -44,7 +44,8 @@ const useCreateSessionAndRedirect = (
       const requestBody: CreateSessionRequest = {
         name: "",
         dataSourceIds: dataSourceIds,
-        inferenceModel: inferenceModel ?? models[0].model_id,
+        inferenceModel:
+          inferenceModel ?? filterChatSelectableModels(models)[0]?.model_id,
         rerankModel: getDefaultRerankModel(rerankingModels),
         responseChunks: 10,
         queryConfiguration: {

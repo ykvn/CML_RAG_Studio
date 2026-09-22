@@ -49,7 +49,12 @@ import {
   Typography,
 } from "antd";
 import { DataSourceType } from "src/api/dataSourceApi.ts";
-import { useTransformModelOptions, getDefaultRerankModel } from "src/utils/modelUtils.ts";
+import {
+  useTransformChatModelOptions,
+  useTransformModelOptions,
+  getDefaultRerankModel,
+  filterChatSelectableModels,
+} from "src/utils/modelUtils.ts";
 import { ResponseChunksRange } from "pages/RagChatTab/Settings/ResponseChunksSlider.tsx";
 import { useGetLlmModels, useGetRerankingModels } from "src/api/modelsApi.ts";
 import { formatDataSource } from "src/utils/formatters.ts";
@@ -70,7 +75,7 @@ const layout = {
 const CreateSessionForm = ({ form, dataSources }: CreateSessionFormProps) => {
   const { data: llmModels } = useGetLlmModels();
   const { data: rerankingModels } = useGetRerankingModels();
-  const llmModelOptions = useTransformModelOptions(llmModels);
+  const llmModelOptions = useTransformChatModelOptions(llmModels);
   const rerankModelOptions = useTransformModelOptions(rerankingModels);
 
   const advancedOptions = () => [
@@ -212,9 +217,7 @@ const CreateSessionForm = ({ form, dataSources }: CreateSessionFormProps) => {
       </Form.Item>
       <Form.Item<CreateSessionRequest>
         initialValue={
-          llmModels === undefined || llmModels.length === 0
-            ? ""
-            : llmModels[0].model_id
+          filterChatSelectableModels(llmModels)[0]?.model_id ?? ""
         }
         name="inferenceModel"
         label="Response synthesizer model"

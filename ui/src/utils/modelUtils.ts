@@ -36,7 +36,11 @@
  * DATA.
  ******************************************************************************/
 import { useMemo } from "react";
-import { Model, useGetModelSource } from "src/api/modelsApi.ts";
+import {
+  Model,
+  ModelSource,
+  useGetModelSource,
+} from "src/api/modelsApi.ts";
 
 export const transformModelOptions = (models?: Model[]) => {
   if (!models) {
@@ -47,6 +51,20 @@ export const transformModelOptions = (models?: Model[]) => {
     label: model.name,
   }));
 };
+
+/**
+ * Models returned by GET /models/llm that are reserved for non-chat workloads
+ * (e.g. OCR ingestion, see llm-service/app/ai/indexing/readers/qwen_ocr.py) and
+ * must never be offered as an inference / response-synthesizer model in the
+ * chat UI. They remain listed on the Models page.
+ */
+export const NON_CHAT_MODEL_IDS = ["Qwen3.8-27B-ocr"];
+
+export const filterChatSelectableModels = (models?: Model[]): Model[] =>
+  (models ?? []).filter((model) => !NON_CHAT_MODEL_IDS.includes(model.model_id));
+
+export const transformChatModelOptions = (models?: Model[]) =>
+  transformModelOptions(filterChatSelectableModels(models));
 
 const REGION_PREFIXES = ["us", "eu", "apac"];
 
@@ -61,6 +79,38 @@ const getModelFamily = (modelId: string): string => {
 
 const capitalizeFirst = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+const buildModelOptions = (
+  models: Model[],
+  modelSource?: ModelSource,
+): ModelSelectOptions => {
+  // For Bedrock, group by model family
+  if (modelSource === "Bedrock") {
+    const familyGroups: Record<string, Model[]> = {};
+
+    models.forEach((model) => {
+      const family = getModelFamily(model.model_id);
+      if (!(family in familyGroups)) {
+        familyGroups[family] = [];
+      }
+      familyGroups[family].push(model);
+    });
+
+    return Object.entries(familyGroups).map(([family, familyModels]) => ({
+      label: capitalizeFirst(family),
+      options: familyModels.map((model) => ({
+        value: model.model_id,
+        label: model.name,
+      })),
+    }));
+  }
+
+  // For all other model providers, return flat options
+  return models.map((model) => ({
+    value: model.model_id,
+    label: model.name,
+  }));
 };
 
 export type ModelSelectOptions = (
@@ -84,8 +134,9 @@ export const getDefaultRerankModel = (
         ?.model_id ?? rerankingModels[0].model_id)
     : undefined;
 
-export const useTransformModelOptions = (
-  models?: Model[],
+const useBuildModelOptions = (
+  models: Model[] | undefined,
+  filter: (models?: Model[]) => Model[],
 ): ModelSelectOptions => {
   const { data: modelSource } = useGetModelSource();
 
@@ -93,32 +144,16 @@ export const useTransformModelOptions = (
     if (!models) {
       return [];
     }
-
-    // For Bedrock, group by model family
-    if (modelSource === "Bedrock") {
-      const familyGroups: Record<string, Model[]> = {};
-
-      models.forEach((model) => {
-        const family = getModelFamily(model.model_id);
-        if (!(family in familyGroups)) {
-          familyGroups[family] = [];
-        }
-        familyGroups[family].push(model);
-      });
-
-      return Object.entries(familyGroups).map(([family, familyModels]) => ({
-        label: capitalizeFirst(family),
-        options: familyModels.map((model) => ({
-          value: model.model_id,
-          label: model.name,
-        })),
-      }));
-    }
-
-    // For all other model providers, return flat options
-    return models.map((model) => ({
-      value: model.model_id,
-      label: model.name,
-    }));
-  }, [models, modelSource]);
+    return buildModelOptions(filter(models), modelSource);
+  }, [models, modelSource, filter]);
 };
+
+const identityModels = (models?: Model[]): Model[] => models ?? [];
+
+export const useTransformModelOptions = (
+  models?: Model[],
+): ModelSelectOptions => useBuildModelOptions(models, identityModels);
+
+export const useTransformChatModelOptions = (
+  models?: Model[],
+): ModelSelectOptions => useBuildModelOptions(models, filterChatSelectableModels);

@@ -73,7 +73,7 @@ import ChatSessionDocuments from "pages/RagChatTab/FooterComponents/ChatSessionD
 import { ChatSessionDragAndDrop } from "pages/RagChatTab/FooterComponents/ChatSessionDragAndDrop.tsx";
 import useModal from "src/utils/useModal.ts";
 import { formatDataSource } from "src/utils/formatters.ts";
-import { useTransformModelOptions } from "src/utils/modelUtils.ts";
+import { useTransformChatModelOptions, filterChatSelectableModels } from "src/utils/modelUtils.ts";
 import { getLlmModelsQueryOptions } from "src/api/modelsApi.ts";
 import { useUpdateSessionMutation } from "src/api/sessionApi.ts";
 import messageQueue from "src/utils/messageQueue.ts";
@@ -129,12 +129,12 @@ const RagChatQueryInput = ({
       }
       return "";
     }
-    return llmModels.length > 0 ? llmModels[0].model_id : "";
+    return filterChatSelectableModels(llmModels)[0]?.model_id ?? "";
   });
   const inputRef = useRef<InputRef>(null);
   const queryClient = useQueryClient();
   const dataSources = validDataSources ?? allDataSources;
-  const modelOptions = useTransformModelOptions(llmModels);
+  const modelOptions = useTransformChatModelOptions(llmModels);
 
   const updateSession = useUpdateSessionMutation({
     onSuccess: () => {
