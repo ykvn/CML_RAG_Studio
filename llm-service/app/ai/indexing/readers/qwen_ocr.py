@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 QWEN_OCR_MODEL = "Qwen3.8-27B-ocr"
 OCR_DPI = 150
 OCR_TIMEOUT = 600.0
-MAX_OCR_PAGE_CHARS = 12000  # client-side backstop: terminates stream on hallucinated org-chart
+MAX_OCR_PAGE_CHARS = 24000  # client-side backstop: terminates stream on hallucinated org-chart
                              # loops (e.g. repeating names) and keeps garbage low (~3k tokens).
                              # 12k chars ≈ 2.4× the largest legitimate page seen in logs, so
                              # real dense table/list pages are preserved.
