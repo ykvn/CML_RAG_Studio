@@ -68,6 +68,32 @@ export const getAmpIsComposableQueryOptions = queryOptions({
   queryFn: getAmpIsComposable,
 });
 
+// Cosmetic only: decides whether the UI shows the Settings page.
+// Fails open (treats everyone as admin) if the endpoint is unavailable.
+export const getAmpIsAdmin = async (): Promise<boolean> => {
+  try {
+    const res = await fetch(`${llmServicePath}/amp/is-admin`, {
+      method: "GET",
+      headers: { ...commonHeaders },
+    });
+    if (!res.ok) {
+      return true;
+    }
+    const data = (await res.json()) as { is_admin?: boolean };
+    return data.is_admin !== false;
+  } catch {
+    return true;
+  }
+};
+
+export const useGetAmpIsAdmin = () => {
+  return useQuery({
+    queryKey: [QueryKeys.getIsAdmin],
+    queryFn: getAmpIsAdmin,
+    staleTime: Infinity,
+  });
+};
+
 export enum JobStatus {
   SCHEDULING = "ENGINE_SCHEDULING",
   STARTING = "ENGINE_STARTING",

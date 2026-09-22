@@ -57,6 +57,7 @@ from ....services.amp_metadata import (
     validate_jdbc,
     ValidationResult,
 )
+from ....services.admin_users import is_admin
 from ....services.amp_update import does_amp_need_updating
 from ....services.models.providers import CAIIModelProvider
 from ....services.utils import has_admin_rights, get_project_environment
@@ -116,6 +117,22 @@ def get_amp_status() -> str:
 @exceptions.propagates
 def amp_is_composed() -> bool:
     return os.getenv("IS_COMPOSABLE", "") != "" or False
+
+
+@router.get(
+    "/is-admin",
+    summary=(
+        "Returns whether the current user is in the admins.json list. "
+        "Cosmetic only: the UI uses this to decide whether to show the "
+        "Settings page. It grants no backend permissions."
+    ),
+)
+@exceptions.propagates
+def current_user_is_admin(
+    remote_user: Annotated[str | None, Header()] = None,
+    origin_remote_user: Annotated[str | None, Header(alias="origin-remote-user")] = None,
+) -> dict[str, bool]:
+    return {"is_admin": is_admin(origin_remote_user or remote_user)}
 
 
 @router.get("/config", summary="Returns application configuration.")

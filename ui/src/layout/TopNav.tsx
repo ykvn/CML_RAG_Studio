@@ -53,6 +53,7 @@ import { UserGreeting } from "src/components/UserGreeting/UserGreeting.tsx";
 import "./style.css";
 import {
   ProjectConfig,
+  useGetAmpIsAdmin,
   useGetPollingAmpConfig,
 } from "src/api/ampMetadataApi.ts";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -61,6 +62,7 @@ const TopNav: React.FC = () => {
   const matchRoute = useMatchRoute();
   const navigate = useNavigate();
   const { data: config } = useSuspenseQuery(useGetPollingAmpConfig());
+  const { data: isAdmin = true } = useGetAmpIsAdmin();
 
   const navigateTo = (path: string) => () => {
     navigate({ to: path }).catch(() => null);
@@ -143,7 +145,7 @@ const TopNav: React.FC = () => {
   });
 
   const items = [...baseItems, analyticsItem];
-  if (config) {
+  if (config && isAdmin) {
     items.push(settingsItem);
   }
 

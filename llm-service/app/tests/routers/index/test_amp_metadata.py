@@ -88,3 +88,55 @@ class TestAmpMetadata:
         assert args[0] == {"access_token": test_token}
         # todo: verify the file content
         # assert args[1] == mock_file()
+
+
+class TestIsAdminEndpoint:
+    @pytest.fixture(autouse=True)
+    def clear_admin_caches(self) -> None:
+        from app.services import admin_users
+
+        admin_users._cached_env_admins.cache_clear()
+        admin_users._cached_file_admins.cache_clear()
+        yield
+        admin_users._cached_env_admins.cache_clear()
+        admin_users._cached_file_admins.cache_clear()
+
+    def test_remote_user_header(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RAG_ADMINS", "alice@example.com")
+        response = client.get(
+            "/amp/is-admin", headers={"remote-user": "Alice@Example.com"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"is_admin": True}
+
+    def test_origin_remote_user_header_preferred(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RAG_ADMINS", "alice@example.com")
+        response = client.get(
+            "/amp/is-admin",
+            headers={"remote-user": "bob@example.com", "origin-remote-user": "alice@example.com"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"is_admin": True}
+
+    def test_non_admin(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RAG_ADMINS", "alice@example.com")
+        response = client.get(
+            "/amp/is-admin", headers={"remote-user": "bob@example.com"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"is_admin": False}
+
+    def test_no_admins_configured_fails_open(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("RAG_ADMINS", raising=False)
+        monkeypatch.setenv("RAG_ADMINS_FILE", "/nonexistent/admins.json")
+        response = client.get("/amp/is-admin")
+        assert response.status_code == 200
+        assert response.json() == {"is_admin": True}

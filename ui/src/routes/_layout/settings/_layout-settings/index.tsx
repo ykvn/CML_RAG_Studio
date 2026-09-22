@@ -36,11 +36,24 @@
  * DATA.
  ******************************************************************************/
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { getAmpConfigQueryOptions } from "src/api/ampMetadataApi.ts";
+import { getAmpIsAdmin } from "src/api/ampMetadataApi.ts";
 import { getModelSourceQueryOptions } from "src/api/modelsApi.ts";
 
 export const Route = createFileRoute("/_layout/settings/_layout-settings/")({
+  // Cosmetic UI guard only: keeps non-admin users out of the Settings page.
+  // Fails open (treats everyone as admin) if the is-admin endpoint is
+  // unavailable. No backend permissions are enforced or changed here.
+  beforeLoad: async () => {
+    const isAdmin = await getAmpIsAdmin();
+    if (!isAdmin) {
+      // TanStack Router convention: `redirect()` returns a non-Error object
+      // that the router catches to perform the navigation.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw redirect({ to: "/chats" });
+    }
+  },
   loader: async ({ context }) =>
     await Promise.all([
       context.queryClient.ensureQueryData(getAmpConfigQueryOptions),

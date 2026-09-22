@@ -55,7 +55,10 @@ import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 import Images from "src/components/images/Images.ts";
 import "./style.css";
 import AmpUpdateBanner from "src/components/AmpUpdate/AmpUpdateBanner.tsx";
-import { useGetPollingAmpConfig } from "src/api/ampMetadataApi.ts";
+import {
+  useGetAmpIsAdmin,
+  useGetPollingAmpConfig,
+} from "src/api/ampMetadataApi.ts";
 import { getItem } from "./TopNav";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
@@ -69,6 +72,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
   const { data: config } = useSuspenseQuery(useGetPollingAmpConfig());
+  const { data: isAdmin = true } = useGetAmpIsAdmin();
 
   const navToRagApp = () => {
     navigate({ to: "/chats" }).catch(() => null);
@@ -128,7 +132,7 @@ const Sidebar: React.FC = () => {
 
   const items = [...baseItems, analyticsItem];
 
-  if (config) {
+  if (config && isAdmin) {
     items.push(settingsItem);
   }
 

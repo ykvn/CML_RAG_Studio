@@ -77,6 +77,24 @@ class _Settings:
     """RAG configuration."""
 
     @property
+    def rag_admins_file(self) -> str:
+        """Path of the admins.json file used to gate the Settings page in the UI.
+
+        Purely cosmetic: this list is only consumed by the read-only
+        ``GET /amp/is-admin`` endpoint. It does not affect any backend
+        permissions.
+        """
+        default = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "admins.json")
+        )
+        return os.environ.get("RAG_ADMINS_FILE") or default
+
+    @property
+    def rag_admins_env(self) -> Optional[str]:
+        """Comma-separated admin usernames from the RAG_ADMINS env var."""
+        return os.environ.get("RAG_ADMINS") or None
+
+    @property
     def metadata_api_url(self) -> str:
         return os.environ.get("API_URL", "http://localhost:8080")
 

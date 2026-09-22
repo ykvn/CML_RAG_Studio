@@ -120,6 +120,7 @@ export enum QueryKeys {
   "getPollingAmpConfig" = "getPollingAmpConfig",
   "getCAIIModelStatus" = "getCAIIModelStatus",
   "getCurrentUser" = "getCurrentUser",
+  "getIsAdmin" = "getIsAdmin",
 }
 
 export const commonHeaders = {
