@@ -54,13 +54,6 @@ export const modelColumns: TableProps<Model>["columns"] = [
     render: (name?: string) =>
       name ?? <Typography.Text type="warning">No model found</Typography.Text>,
   },
-  {
-    title: "Status",
-    dataIndex: "available",
-    width: 150,
-    key: "available",
-    render: (_, model) => <ModelStatusCell model={model} />,
-  },
 ];
 
 export const getColumnsForModelSource = (
