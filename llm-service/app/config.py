@@ -85,7 +85,7 @@ class _Settings:
         permissions.
         """
         default = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "admins.json")
+            os.path.join(os.path.dirname(__file__), os.pardir, "admins.json")
         )
         return os.environ.get("RAG_ADMINS_FILE") or default
 

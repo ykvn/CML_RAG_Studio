@@ -51,8 +51,9 @@ def clear_caches() -> None:
 
 
 class TestLoadAdminUsers:
-    def test_empty_env_allows_everyone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_empty_env_allows_everyone(self, monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
         monkeypatch.delenv("RAG_ADMINS", raising=False)
+        monkeypatch.setenv("RAG_ADMINS_FILE", str(tmp_path / "does_not_exist.json"))
         assert is_admin("anyone@example.com") is True
 
     def test_env_var_admins(self, monkeypatch: pytest.MonkeyPatch) -> None:
